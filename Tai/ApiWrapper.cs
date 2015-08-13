@@ -5,13 +5,12 @@ using Newtonsoft.Json.Linq;
 
 namespace Tai {
 
-	// TODO: expalin to Brent's confused self why this is called database
-    public class ApiDatabase {
+    public class ApiWrapper {
 
         private string BASE_URL = "https://rally1.rallydev.com/slm/webservice/v2.0/";
         private CachedAuthentication CACHED_AUTH;
 
-        public ApiDatabase(TaiConfig config) {
+        public ApiWrapper(TaiConfig config) {
 
             BASE_URL = config.apiUrl ?? BASE_URL;
 
@@ -39,7 +38,7 @@ namespace Tai {
             var uri         = new Uri(BASE_URL + "security/authorize");
             var newAuth     = HttpService.GetCachedAuthentication(uri, MakeCredentials(uri, username, password));
             var jobject     = JObject.Parse(newAuth.rawAuthResponse);
-            newAuth.token   = (string)jobject["OperationResult"]["SecurityToken"];
+            newAuth.token   = jobject["OperationResult"].Value<string>("SecurityToken");
             newAuth.username= username;
             newAuth.password= password;
 
@@ -87,8 +86,9 @@ namespace Tai {
 
             foreach(JToken iteration in iterations) {
 
-                string iteration_id = (string)iteration["ObjectID"];
+                string iteration_id = iteration.Value<string>("ObjectID");
 
+                //TODO: get the full object with new learned flag. be sure to test out before commit
                 var query   = string.Format("HierarchicalRequirement?query=((Project.ObjectID = {0}) and (Iteration.ObjectID = {1}))", projectId, iteration_id);
                 var json    = GetJsonObject(BASE_URL + query);
 
@@ -96,7 +96,7 @@ namespace Tai {
 
                 foreach (JToken partial_story in results) {
 
-                    string true_url = (string)partial_story["_ref"];
+                    string true_url = partial_story.Value<string>("_ref");
                     JToken full_story = GetJsonObject(true_url);
 
                     storys.Add(full_story["HierarchicalRequirement"]);
@@ -112,7 +112,7 @@ namespace Tai {
 
             foreach (JToken story in storys) {
 
-                var ref_url = (string)story["Tasks"]["_ref"];
+                var ref_url = story["Tasks"].Value<string>("_ref");
                 var json    = GetJsonObject(ref_url);
                 var results= json["QueryResult"]["Results"];
 
@@ -133,7 +133,7 @@ namespace Tai {
 
             foreach(JToken task in results) {
 
-                var task_creation = Convert.ToDateTime((string)task["CreationDate"]);
+                var task_creation = Convert.ToDateTime(task.Value<string>("CreationDate"));
 
                 if(task_creation.Date >= weekStart.Date) {
                     tasks.Add(task);}
@@ -149,10 +149,10 @@ namespace Tai {
 
             foreach(JToken person in myTeam) {
             
-                string a_username = (string)person["UserName"];
+                string a_username = person.Value<string>("UserName");
 
                 if(a_username.ToLower() == targetUsername.ToLower()) {
-                    object_id = (string)person["ObjectID"];
+                    object_id = person.Value<string>("ObjectID");
                     break;
                 }
             }
@@ -167,12 +167,12 @@ namespace Tai {
 
             foreach(JToken task in tasks) {
                 
-                var query       = string.Format("timeentryitem?query=(Task.ObjectId = {0})&pagesize=200", (string)task["ObjectID"]);
+                var query       = string.Format("timeentryitem?query=(Task.ObjectId = {0})&pagesize=200", task.Value<string>("ObjectID"));
                 var json        = GetJsonObject(BASE_URL + query);
                 var results     = json["QueryResult"]["Results"];
 
-                var task_state  = (string)task["State"];
-                var task_creation = Convert.ToDateTime((string)task["CreationDate"]);
+                var task_state  = task.Value<string>("State");
+                var task_creation = Convert.ToDateTime(task.Value<string>("CreationDate"));
 
                 if(task_creation.Date >= weekStart && task_creation.Date <= weekStart.AddDays(7) && (task_state == "Defined" || task_state == "In-Progress")) {
                 
@@ -180,20 +180,20 @@ namespace Tai {
                     foreach(JToken partial_item in results) {
             
 
-                        string item_url         = (string)partial_item["_ref"];
+                        string item_url         = partial_item.Value<string>("_ref");
                         JToken full_time_item   = GetJsonObject(item_url);
-                        var item_week_start     = Convert.ToDateTime((string)full_time_item["TimeEntryItem"]["WeekStartDate"]);//this is not accurate enough unfortunately.
+                        var item_week_start     = Convert.ToDateTime(full_time_item["TimeEntryItem"].Value<string>("WeekStartDate"));//this is not accurate enough unfortunately.
                         
                         if(item_week_start.Date == weekStart.Date) {
                             var custom = new TimeEntryItem() {
                                 self = full_time_item["TimeEntryItem"],
-                                taskName = (string)full_time_item["TimeEntryItem"]["TaskDisplayString"],
-                                storyName = (string)full_time_item["TimeEntryItem"]["WorkProductDisplayString"],
-                                timeEntryObjectId = (string)full_time_item["TimeEntryItem"]["ObjectID"],
+                                taskName = full_time_item["TimeEntryItem"].Value<string>("TaskDisplayString"),
+                                storyName = full_time_item["TimeEntryItem"].Value<string>("WorkProductDisplayString"),
+                                timeEntryObjectId = full_time_item["TimeEntryItem"].Value<string>("ObjectID"),
                                 timeEntryValues = new List<JToken>()
                             };
                     
-                            string value_url = (string)full_time_item["TimeEntryItem"]["Values"]["_ref"];
+                            string value_url = full_time_item["TimeEntryItem"]["Values"].Value<string>("_ref");
                             JToken value_list = GetJsonObject(value_url);
                             custom.timeEntryValues.AddRange(value_list["QueryResult"]["Results"]);
                             time_entrys.Add(custom);
@@ -217,7 +217,7 @@ namespace Tai {
 
             var response = JToken.Parse(HttpService.PostJson(url, final_post.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH));
             
-            bool has_error = ((string)response["CreateResult"]["Errors"]).Contains("violation");
+            bool has_error = response["CreateResult"].Value<string>("Errors").Contains("violation");
 
             return has_error ? string.Empty : response["CreateResult"].Value<string>("ObjectID");
         }
@@ -232,9 +232,9 @@ namespace Tai {
             var final_post = new JObject();
             final_post["TimeEntryValue"] = new JObject();
 
-            final_post["TimeEntryValue"]["DateVal"] = (string)postJson["DateVal"];
-            final_post["TimeEntryValue"]["Hours"] = (string)postJson["Hours"];
-            final_post["TimeEntryValue"]["TimeEntryItem"] = (string)postJson["TimeEntryItem"];
+            final_post["TimeEntryValue"]["DateVal"] = postJson.Value<string>("DateVal");
+            final_post["TimeEntryValue"]["Hours"] = postJson.Value<string>("Hours");
+            final_post["TimeEntryValue"]["TimeEntryItem"] = postJson.Value<string>("TimeEntryItem");
 
             //var response = HttpService.PostJson(url, final_post.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), RALLY_AUTH);
             //todo: 
@@ -245,7 +245,7 @@ namespace Tai {
             var final_post = new JObject();
             final_post["HierarchicalRequirement"] = new JObject(); 
 
-            final_post["HierarchicalRequirement"]["c_BuildID"] = (string)postJson["c_BuildID"];
+            final_post["HierarchicalRequirement"]["c_BuildID"] = postJson.Value<string>("c_BuildID");
             final_post["HierarchicalRequirement"]["c_UnitTestComplete"] = "true";
 
             var preppedURL = userStoryURL + "{0}";
@@ -263,9 +263,9 @@ namespace Tai {
             var jsonQueryResults = jsonQuery["QueryResult"]["Results"];
 
             string true_url = "";
-            //not sure how to pull out the _ref any other way...gotta fix later
+            //todo: M - not sure how to pull out the _ref any other way...gotta fix later
             foreach (JToken token in jsonQueryResults) {
-                true_url = (string)token["_ref"];
+                true_url = token.Value<string>("_ref");
                 Console.WriteLine(true_url);
             }
             return true_url;

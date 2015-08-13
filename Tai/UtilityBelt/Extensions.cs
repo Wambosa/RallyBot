@@ -1,7 +1,7 @@
 ﻿
 namespace Tai.UtilityBelt {
 
-    public static class IntArrayExtensions {
+    public static class CustomExtensions {
 
         public static int Sum(this int[] arr) {
 

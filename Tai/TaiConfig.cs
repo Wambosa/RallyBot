@@ -60,7 +60,7 @@ namespace Tai {
                 isValidConfiguration = true;
 
             }else{
-                //todo: this will trigger a conf file recreation and questioning to repopulate
+                //todo: this will trigger a conf file recreation and questioning to repopulate. but not in batch mode
                 isValidConfiguration = false;
             }
         }

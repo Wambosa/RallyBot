@@ -7,8 +7,9 @@ using System.Runtime.InteropServices;
 
 namespace Tai.UtilityBelt
 {
-	internal static class Graple
+	internal static class Grapple
 	{
+        // if you need to go get something use grable to do the IO
 		// Graple does exactly that, it extends and hangs on to stuff in the tai namespace and runtime
 		// Life configurations, resource files, command line input
 
