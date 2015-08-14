@@ -1,20 +1,47 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using Tai.Extensions;
+using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
-namespace Tai.UtilityBelt
-{
-	internal static class GoodSamaritan
-	{
-		/// <summary>
-		/// Pew pew
-		/// </summary>
-		/// <returns></returns>
-		internal static string WelcomeText()
-		{
-			return "\n\nTai \n" +
+namespace Tai.UtilityBelt {
+
+    internal static class Echo {
+
+        internal static Byte LOG_LEVEL = 10;
+
+        internal static void IterationReport(List<JToken> fullTeam, List<JToken> iterations, List<JToken> storys, List<JToken> tasks) {
+
+            var report = new StringBuilder();
+
+            foreach (JToken iteration in iterations){
+                report.AppendLine(iteration.Value<string>("Name"));}
+            report.AppendLine("==========================\n\n");
+
+            report.AppendLine("Team Members");
+            foreach (JToken person in fullTeam){
+                report.AppendLine(person.Value<string>("DisplayName"));}
+            report.AppendLine("==========================\n\n");
+
+            foreach (JToken story in storys){
+
+                var hero = story.Value<string>("HeroOfTime");
+                var name = story.Value<string>("Name");
+                var risk = story.Value<string>("BlockedReason");
+                var status = story.Value<string>("ScheduleState");
+                var date = story.Value<string>("AcceptedDate").GetPrettyDate();
+
+                var line = string.Format("{0}\n{1}\n{2}\n{3}\n{4}", hero, name, date, status, risk);
+
+                report.AppendLine(line);
+                report.AppendLine("-----------------------\n");
+            }
+
+            Out(report, 2);
+        }
+
+		internal static void WelcomeText() {
+			Out("\n\nTai \n" +
 			 @"
                          ..sSs$$$$$$b.                                       
                        .$$$$$$$$$$$$$$$.                                     
@@ -79,83 +106,43 @@ $$$$$   $$$$$   $$   $$$    $$$$$$$   $$$$$$   $$   $$$   $$$$   $b   $     $
 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ dp $            
-            ";
+            ", 5);
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <returns></returns>
-		internal static string OffensiveGesture()
-		{
-			return @"┌∩┐(>_<)┌∩┐";
+		internal static void OffensiveGesture() {
+			Out(@"┌∩┐(>_<)┌∩┐", 5);
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		internal static void HelpText()
-		{
+		internal static void HelpText() {
+			Out(@"
+                Tai
+                designed to lessen the burden of admin tasks
 
-			var clippy_help = new StringBuilder();
-
-			clippy_help.AppendLine(@"
-        Tai
-        designed to lessen the burden of admin tasks
-
-        todo: write a better help file
-        ");
-
-			Console.WriteLine(clippy_help);
+                todo: write a better help file
+            ", 1);
 		}
 
-
-		internal static string GetFarewell()
-		{
-
-			var farewell = new[]{
-            "thinking of you",
-            "your majesty",
-            "with smugness",
-            "smugly yours",
-            "sincerely",
-            "with great jubilation",
-            "fearfully yours",
-            "lurking behind you",
-            "good day",
-            "with regrets",
-            "My Best",
-            "My best to you",
-            "Best",
-            "All Best",
-            "All the best",
-            "Best Wishes",
-            "Bests",
-            "Best Regards",
-            "Regards",
-            "Warm Regards",
-            "Warmest Regards",
-            "Warmest",
-            "Warmly",
-            "Take care",
-            "Many thanks",
-            "Thanks for your consideration",
-            "Hope this helps",
-            "Looking forward",
-            "Rushing",
-            "In haste",
-            "Be well",
-            "Peace",
-            "Yours Truly",
-            "Yours",
-            "Very Truly Yours",
-            "Sincerely",
-            "Sincerely Yours",
-            "Cheers!"
-            };
-
-			return farewell[new Random().Next(0, farewell.Length)];
+		internal static void ErrorReport(string[] badInput) {
+			var errReport = new StringBuilder();
+			foreach (var misunderstoodWord in badInput)
+				errReport.AppendLine("No switch available for: " + misunderstoodWord);
+			
+			Out(errReport, 1);
 		}
 
-	}
+        public static void Out(string message, int noisiness = 1) {
+            
+            if(noisiness <= LOG_LEVEL) {
+                Console.WriteLine(message);
+            }
+        }
+
+        public static void Out(StringBuilder sb, int noisiness = 1) {
+            
+            if(noisiness <= LOG_LEVEL) {
+                Console.WriteLine(sb);
+            }
+        }
+
+    }
 }

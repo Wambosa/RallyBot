@@ -63,7 +63,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Mono\Options.cs" />
-    <Compile Include="Tai\UtilityBelt\Extensions.cs" />
+    <Compile Include="Tai\CLIMethod.cs" />
+    <Compile Include="Tai\Extensions.cs" />
     <Compile Include="Tai\CachedAuthentication.cs" />
     <Compile Include="Tai\TimeEntryItem.cs" />
     <Compile Include="Tai\TaiConfig.cs" />
@@ -71,9 +72,8 @@
     <Compile Include="Tai\Program.cs" />
     <Compile Include="Tai\HttpService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Tai\UtilityBelt\GoodSamaritan.cs" />
     <Compile Include="Tai\UtilityBelt\Grapple.cs" />
-    <Compile Include="Tai\UtilityBelt\Reporter.cs" />
+    <Compile Include="Tai\UtilityBelt\Echo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

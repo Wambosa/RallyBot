@@ -1,34 +1,30 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
-
 namespace Tai {
 
-    public class TaiConfig {
+    public class TaiConfig : Dictionary<string, string> {
 
-        public bool isValidConfiguration;
+        public new string this[string column] {
 
-        public string projectId;
+            get {
+                if (ContainsKey(column)) {//todo: need to check for empty strings and treat as null
+                    return base[column];
+                } else {
+                    return null;}
+            }
 
-        public string username;
+            set {
+                if (ContainsKey(column)) {
+                    base[column] = value;
+                } else {
+                    Add(column, value);}
+            }
+        }
 
-        public string password;
+        public bool hasPhysicalConfigFile {get; protected set;}
 
-        #region report specific
-
-        public string emailGreeting;
-
-        public string emailSignature;
-
-        public string apiUrl;
-
-        public string[] includeNames; //change to includeInReportNames
-        #endregion
-
-        #region burndown specific
-
-        //todo: implement these
-
+        #region prototype todo reminder
         public bool isWeekendWorkaholic = false;
 
         public int hoursPerDay = 0;
@@ -42,26 +38,12 @@ namespace Tai {
 
             if (raw.Length > 50) {//shallow validation
 
-                JToken json_config = JToken.Parse(raw);
+                JObject json_config = JObject.Parse(raw);
 
-                List<string> devs = new List<string>();
+                foreach(var property in json_config) {
+                    this[property.Key] = property.Value.ToString();}
 
-                foreach (JToken devname in json_config["includeNames"]) {
-                    devs.Add((string)devname);}
-
-                apiUrl = (string)json_config["apiUrl"];
-                projectId = (string)json_config["projectId"];
-                username = (string)json_config["username"];
-                password = (string)json_config["password"];
-
-                emailGreeting = (string)json_config["emailGreeting"];
-                emailSignature = (string)json_config["emailSignature"];
-                includeNames = devs.ToArray();
-                isValidConfiguration = true;
-
-            }else{
-                //todo: this will trigger a conf file recreation and questioning to repopulate. but not in batch mode
-                isValidConfiguration = false;
+                hasPhysicalConfigFile = true;
             }
         }
 

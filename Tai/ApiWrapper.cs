@@ -1,35 +1,44 @@
 ﻿using System;
 using System.Net;
-using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Tai {
 
-    public class ApiWrapper {
+    public static class ApiWrapper {
 
-        private string BASE_URL = "https://rally1.rallydev.com/slm/webservice/v2.0/";
-        private CachedAuthentication CACHED_AUTH;
+        private static string BASE_URL = "https://rally1.rallydev.com/slm/webservice/v2.0/";
+        private static CachedAuthentication CACHED_AUTH;
 
-        public ApiWrapper(TaiConfig config) {
+        public static bool Initialize(TaiConfig config) {
 
-            BASE_URL = config.apiUrl ?? BASE_URL;
+            BASE_URL = config["apiUrl"] ?? BASE_URL;
 
-            CACHED_AUTH = GetCachedAuthentication(config.username, config.password);
+            try{
+                CACHED_AUTH = GetCachedAuthentication(config["username"], config["password"]);
+
+            }catch{
+                Console.WriteLine("No Internet Connection");//meah
+                Environment.Exit(0);
+            }
+
+            return true;
         }
 
-        private CredentialCache MakeCredentials(Uri aUri) {
+        private static CredentialCache MakeCredentials(Uri aUri) {
             var credentials = new CredentialCache();
             credentials.Add(aUri, "Basic", new NetworkCredential(CACHED_AUTH.username, CACHED_AUTH.password));
             return credentials;
         }
 
-        private CredentialCache MakeCredentials(Uri aUri, string username, string password) {
+        private static CredentialCache MakeCredentials(Uri aUri, string username, string password) {
             var credentials = new CredentialCache();
             credentials.Add(aUri, "Basic", new NetworkCredential(username, password));
             return credentials;
         }
 
-        private CachedAuthentication GetCachedAuthentication(string username, string password) {
+        private static CachedAuthentication GetCachedAuthentication(string username, string password) {
             /*
             manual example (like in web browser)
             "https://username@gmail.com:password@rally1.rallydev.com/slm/webservice/v2.0/security/authorize"
@@ -45,18 +54,56 @@ namespace Tai {
             return newAuth;
         }
 
-        public string TestSecurityToken() {
-            return CACHED_AUTH.token != null ? "Connection was made successfully!" : "YOUR XBOX IS BRICKED! AGAIN! there is no security token";
-        }
-
-        private JToken GetJsonObject(string url) {
+        private static JToken GetJsonObject(string url) {
 
             var uri = new Uri(url);
 
             return JToken.Parse(HttpService.GetRawJson(uri, MakeCredentials(uri)));
         }
 
-        public List<JToken> GetIteration(string projectId, string iterationNum) {
+        public static string GetProjectId(string userName) {
+            // assumes the team you are on based on recent activity
+            // https:// rally1.rallydev.com/slm/webservice/v2.0/task?query=(Owner.UserName = name@gmail.com)&fetch=true&order=CreationDate desc
+
+            var query       = string.Format("task?query=(Owner.UserName = {0})&fetch=true&order=CreationDate desc", userName);
+            var json        = GetJsonObject(BASE_URL + query);
+            var iterations  = new List<JToken>();
+
+            var project_url = json["QueryResult"]["Results"].First["Project"].Value<string>("_ref");
+            var split = project_url.Split('/');
+
+            return split[split.Length-1];
+        }
+
+        public static string GetIterationNumber(string projectId) {
+            // assumes the latest iteration
+            // https:// rally1.rallydev.com/slm/webservice/v2.0/Project/15188699182/Iterations?order=EndDate&pagesize=200
+
+            var query       = string.Format("Project/{0}/Iterations?order=EndDate desc&pagesize=1", projectId);
+            var json        = GetJsonObject(BASE_URL + query);
+            var iterations  = new List<JToken>();
+
+            var most_recent = json["QueryResult"]["Results"].First;
+            var assumed_iteration_num = Regex.Match(most_recent.Value<string>("Name"), @"\s\d\d").Value;
+
+            return assumed_iteration_num;
+        }
+
+        public static List<JToken> GetIteration(string projectId) {
+            // assumes the latest iteration
+            // https:// rally1.rallydev.com/slm/webservice/v2.0/Project/15188699182/Iterations?order=EndDate&pagesize=200
+
+            var query       = string.Format("Project/{0}/Iterations?order=EndDate desc&pagesize=1", projectId);
+            var json        = GetJsonObject(BASE_URL + query);
+            var iterations  = new List<JToken>();
+
+            var most_recent = json["QueryResult"]["Results"].First;
+            var assumed_iteration_num = Regex.Match(most_recent.Value<string>("Name"), @"\s\d\d").Value;
+
+            return GetIteration(projectId, assumed_iteration_num);
+        }
+
+        public static List<JToken> GetIteration(string projectId, string iterationNum) {
 
             //https:// rally1.rallydev.com/slm/webservice/v2.0/Project/15188699182/Iterations?query=(Name%20contains%20%2292%22)
 
@@ -68,7 +115,11 @@ namespace Tai {
             return iterations;
         }
 
-        public List<JToken> GetTeamMembers(string projectId) {
+        public static string GetUserObjectId(string userName) {
+            return "todo";
+        }
+
+        public static List<JToken> GetTeamMembers(string projectId) {
 
             var people  = new List<JToken>();
             var query   = string.Format("Project/{0}/TeamMembers", projectId);
@@ -78,7 +129,7 @@ namespace Tai {
             return people;
         }
 
-        public List<JToken> GetUserStories(string projectId, List<JToken> iterations) {
+        public static List<JToken> GetUserStories(string projectId, List<JToken> iterations) {
 
             //https:// rally1.rallydev.com/slm/webservice/v2.0/HierarchicalRequirement?query=((Project.ObjectID%20=%2015188699182)%20and%20(Iteration.ObjectID%20=%2038080627861))
 
@@ -106,7 +157,7 @@ namespace Tai {
             return storys;
         }
 
-        public List<JToken> GetTasks(List<JToken> storys) {
+        public static List<JToken> GetTasks(List<JToken> storys) {
 
             List<JToken> tasks = new List<JToken>();
 
@@ -122,7 +173,7 @@ namespace Tai {
             return tasks;
         }
 
-        public List<JToken> GetTasks(string userId, DateTime weekStart) {
+        public static List<JToken> GetTasks(string userId, DateTime weekStart) {
             //https:// rally1.rallydev.com/slm/webservice/v2.0/task?query=(Owner.ObjectId%20=%2033470899520)&fetch=true
 
             List<JToken> tasks = new List<JToken>();
@@ -141,9 +192,8 @@ namespace Tai {
 
             return tasks;
         }
-        
 
-        public string GetSpecificTeamMemberObjectId(List<JToken> myTeam, string targetUsername) {
+        public static string GetSpecificTeamMemberObjectId(List<JToken> myTeam, string targetUsername) {
             //todo: just query the api directly in next version using the email (should be unique enough to get accurate results)
             var object_id = string.Empty;
 
@@ -160,7 +210,7 @@ namespace Tai {
             return object_id;
         }
 
-        public List<TimeEntryItem> GetTimeEntryItemsForOneTeamMember(List<JToken> tasks, DateTime weekStart) {
+        public static List<TimeEntryItem> GetTimeEntryItemsForOneTeamMember(List<JToken> tasks, DateTime weekStart) {
             //https:// rally1.rallydev.com/slm/webservice/v2.0/timeentryitem?query=((Project.ObjectId = 15188699182) and (User.ObjectId = 33470899520))
 
             var time_entrys = new List<TimeEntryItem>();
@@ -205,7 +255,7 @@ namespace Tai {
             return time_entrys;
         }
 
-        public string CreateNewTimeEntryItem(string projectId, string userId, string taskId, DateTime weekStarttDate) {
+        public static string CreateNewTimeEntryItem(string projectId, string userId, string taskId, DateTime weekStarttDate) {
 
             var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/timeentryitem/create?key={0}", CACHED_AUTH.token);
 
@@ -222,7 +272,7 @@ namespace Tai {
             return has_error ? string.Empty : response["CreateResult"].Value<string>("ObjectID");
         }
 
-        public JToken PostNewTimeEntryValue(JObject postJson) {
+        public static JToken PostNewTimeEntryValue(JObject postJson) {
             //todo: clean this up
 
             var url_action = (string)postJson["Verb"] == "insert" ? "create?key=" + CACHED_AUTH.token : (string)postJson["ObjectID"] + "?key=" + CACHED_AUTH.token;
@@ -241,7 +291,7 @@ namespace Tai {
             return final_post; //response;
         }
 
-        public JToken PostNewBuildId(JObject postJson, string userStoryURL) {
+        public static JToken UpdateStoryBuildId(JObject postJson, string userStoryURL) {
             var final_post = new JObject();
             final_post["HierarchicalRequirement"] = new JObject(); 
 
@@ -256,7 +306,7 @@ namespace Tai {
             return response;
         }
 
-        public string GetUserStoryRef(string storyId) {
+        public static string GetUserStoryRef(string storyId) {
 
             var query = string.Format("HierarchicalRequirement?query=(FormattedID = {0})", storyId);
             var jsonQuery = GetJsonObject(BASE_URL + query);   

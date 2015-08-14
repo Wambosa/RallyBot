@@ -1,5 +1,5 @@
 ﻿
-namespace Tai.UtilityBelt {
+namespace Tai.Extensions {
 
     public static class CustomExtensions {
 
@@ -12,7 +12,6 @@ namespace Tai.UtilityBelt {
 
             return total;
         }
-
 
         public static bool Contains(this string hayStack, string[] needles) {
 

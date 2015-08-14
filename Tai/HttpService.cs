@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Net;
 using System.Text;
 using System.Net.Http;
@@ -17,7 +16,7 @@ namespace Tai {
 
             if (response.StatusCode == HttpStatusCode.OK) {
 
-                result = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                result = new System.IO.StreamReader(response.GetResponseStream()).ReadToEnd();
 
             }else{
                 result = "no response? status code :" + response.StatusCode;
@@ -33,7 +32,7 @@ namespace Tai {
             request.Credentials     = credentials;
             request.CookieContainer = new CookieContainer();
             var response            = (HttpWebResponse)request.GetResponse();
-            body                    = new StreamReader(response.GetResponseStream()).ReadToEnd();
+            body                    = new System.IO.StreamReader(response.GetResponseStream()).ReadToEnd();
 
             return new CachedAuthentication() {
                 rawAuthResponse = body,
