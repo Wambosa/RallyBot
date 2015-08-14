@@ -15,6 +15,7 @@ namespace Tai {
         private static TAI_COMMAND SESSION_ACTION = TAI_COMMAND.NONE;
 
         private static Dictionary<TAI_COMMAND, TaiMethod> TaiTakeCareOfThis = new Dictionary<TAI_COMMAND, TaiMethod>() {
+            {TAI_COMMAND.NONE, _ => {Echo.HelpText();}},
             {TAI_COMMAND.REPORT, CLIMethod.WriteStatusReportForAnIteration},
             {TAI_COMMAND.BURNDOWN, CLIMethod.AutomaticallySetTime_Alpha},
             {TAI_COMMAND.SETBUILDID, CLIMethod.SetStoryBuildId}
@@ -42,8 +43,8 @@ namespace Tai {
                 {"email-signature=", "", me => {config["emailSignature"] = me;}},
                 {"iteration-number=", "", num => {config["iterationNumber"] = num;}},
                 {"status-report-names=", "", names => {config["statusReportNames"] = names;}}, //this one will have to be split later by comma
-
                 {"v=|verbosity=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},
+                {"no-interaction", "", _ => {Grapple.isAllowingHumanInteraction = false;}},
 
 
                 /* i don't like the idea of passing credentials, however added it for completion */
@@ -61,23 +62,12 @@ namespace Tai {
 
             Echo.WelcomeText();
 
-            config = ConfirmConfigCredentials(config);
+            config = Grapple.TryGetCredentialsManually(config);
             ApiWrapper.Initialize(config);
 
             TaiTakeCareOfThis[SESSION_ACTION](config);
 
             Echo.Out("done", 2);
-        }
-
-        private static TaiConfig ConfirmConfigCredentials(TaiConfig conf) {
-
-	        if(!conf.ContainsKey("username")) {
-		        conf["username"] = Grapple.GetUsernameFromTerminal();}
-
-	        if(!conf.ContainsKey("password")) {
-		        conf["password"] = Grapple.GetPasswordFromTerminal();}
-			
-            return conf;
         }
     }
 }

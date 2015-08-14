@@ -18,7 +18,7 @@ namespace Tai {
             var iterations  = ApiWrapper.GetIteration(config["projectId"], config["iterationNumber"]);
             var storys      = ApiWrapper.GetUserStories(config["projectId"], iterations);
             var tasks       = ApiWrapper.GetTasks(storys);
-            storys          = AssignTaskMastersToStorys(storys, tasks, config["statusReportNames"].Split(','));
+            storys          = AssignTaskMastersToStorys(storys, tasks, JArray.Parse(config["statusReportNames"]).ToArray());
             var emailBody   = GenerateMicrosoftHtmlTabularReport(storys, config);
 
             System.IO.File.WriteAllText(Grapple.GetThisFolder() + "email_body.txt", emailBody.ToString());

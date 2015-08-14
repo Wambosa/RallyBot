@@ -3,6 +3,16 @@ namespace Tai.Extensions {
 
     public static class CustomExtensions {
 
+        public static string[] ToArray(this Newtonsoft.Json.Linq.JArray arr) {
+            
+            string[] builtIn = new string[arr.Count];
+
+            for(int i=0; i<arr.Count; ++i) {
+                builtIn[i] = (string)arr[i];}
+
+            return builtIn;
+        }
+
         public static int Sum(this int[] arr) {
 
             int total = 0;
