@@ -26,10 +26,10 @@ namespace Tai {
 
             //muahahha anonymouse functions in c# !!!
 	        var options = new OptionSet() {
-				{ "iteration-report", "", _ => {SESSION_ACTION = TAI_COMMAND.REPORT;}},
-				{ "fill-time-values", "", _ => {SESSION_ACTION = TAI_COMMAND.BURNDOWN;}},
-				{ "set-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.SETBUILDID;}},
-				//todo: generic task creation
+                { "iteration-report", "", _ => {SESSION_ACTION = TAI_COMMAND.REPORT;}},
+                { "fill-time-values", "", _ => {SESSION_ACTION = TAI_COMMAND.BURNDOWN;}},
+                { "set-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.SETBUILDID;}},
+                //todo: generic task creation
                 { "?|h|help", "", _ => Echo.HelpText()},
                                 
                 {"api-url=", "", url => {config["apiUrl"] = url;}}, 
@@ -43,7 +43,7 @@ namespace Tai {
                 {"iteration-number=", "", num => {config["iterationNumber"] = num;}},
                 {"status-report-names=", "", names => {config["statusReportNames"] = names;}}, //this one will have to be split later by comma
 
-				{"v=|verbosity=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},
+                {"v=|verbosity=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},
 
 
                 /* i don't like the idea of passing credentials, however added it for completion */
@@ -69,15 +69,15 @@ namespace Tai {
             Echo.Out("done", 2);
         }
 
-		private static TaiConfig ConfirmConfigCredentials(TaiConfig conf) {
+        private static TaiConfig ConfirmConfigCredentials(TaiConfig conf) {
 
-			if(!conf.ContainsKey("username")) {
-				conf["username"] = Grapple.GetUsernameFromTerminal();}
+	        if(!conf.ContainsKey("username")) {
+		        conf["username"] = Grapple.GetUsernameFromTerminal();}
 
-			if(!conf.ContainsKey("password")) {
-				conf["password"] = Grapple.GetPasswordFromTerminal();}
+	        if(!conf.ContainsKey("password")) {
+		        conf["password"] = Grapple.GetPasswordFromTerminal();}
 			
             return conf;
-		}
+        }
     }
 }
