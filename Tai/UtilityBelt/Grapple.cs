@@ -5,10 +5,6 @@ namespace Tai.UtilityBelt {
 	internal static class Grapple {
 
         internal static bool isAllowingHumanInteraction = true;
-        // if you need to go get something use grable to do the IO
-        // Graple does exactly that, it extends and hangs on to stuff in the tai namespace and runtime
-        // Life configurations, resource files, command line input
-
         ////								_ 1      1 __        _.xxxxxx.
         ////				 [xxxxxxxxxxxxxx|##|xxxxxxxx|##|xxxxxxXXXXXXXXX|
         //// ____            [XXXXXXXXXXXXXXXXXXXXX/.\||||||XXXXXXXXXXXXXXX|
@@ -27,25 +23,6 @@ namespace Tai.UtilityBelt {
         ////3 ........... Air Cooling Vent                    `#######b
         ////4 ................. Power Pack                     #######P
         ////5 ... Power Pack Release Lever             LS      `#####B
-		
-        // TODO: Create formatted empty reports, pull them in with graple - 
-        // TODO: pass them off to something else to build the report and return it
-
-        /// <summary>
-        /// well....we're going to get a folder, this one to be sure
-        /// </summary>
-        /// <returns></returns>
-        internal static string GetSolutionFolder() {
-	        // The config path is currently three directories back
-	        string microsoftPsychopath = "";
-	        foreach (var bit in System.Reflection.Assembly.GetEntryAssembly().Location.Split('\\')){
-		        microsoftPsychopath += bit + '\\';
-		        if (bit.Equals("tai")) {
-			        break;
-		        }
-	        }
-	        return microsoftPsychopath;
-        }
 
         internal static string GetThisFolder() {
             var path_bits = System.Reflection.Assembly.GetEntryAssembly().Location.Split('\\');

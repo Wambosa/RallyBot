@@ -42,10 +42,9 @@ namespace Tai {
                 {"email-greeting=", "", hi => {config["emailGreeting"] = hi;}},
                 {"email-signature=", "", me => {config["emailSignature"] = me;}},
                 {"iteration-number=", "", num => {config["iterationNumber"] = num;}},
-                {"status-report-names=", "", names => {config["statusReportNames"] = names;}}, //this one will have to be split later by comma
+                {"status-report-names=", "", names => {config["statusReportNames"] = names;}},
                 {"v=|verbosity=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},
                 {"no-interaction", "", _ => {Grapple.isAllowingHumanInteraction = false;}},
-
 
                 /* i don't like the idea of passing credentials, however added it for completion */
                 {"username=", "", user => {config["username"] = user;}},
