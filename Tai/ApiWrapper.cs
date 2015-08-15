@@ -257,52 +257,6 @@ namespace Tai {
             return weekly_time;
         }
 
-
-        public static List<TimeEntryItem> GetTimeEntryItemsForOneTeamMember(List<JToken> tasks, DateTime weekStart) {
-            //https:// rally1.rallydev.com/slm/webservice/v2.0/timeentryitem?query=((Project.ObjectId = 15188699182) and (User.ObjectId = 33470899520))
-
-            var time_entrys = new List<TimeEntryItem>();
-
-            foreach(JToken task in tasks) {
-                
-                var query       = string.Format("timeentryitem?query=(Task.ObjectId = {0})&pagesize=200", task.Value<string>("ObjectID"));
-                var json        = GetJsonObject(BASE_URL + query);
-                var results     = json["QueryResult"]["Results"];
-
-                var task_state  = task.Value<string>("State");
-                var task_creation = Convert.ToDateTime(task.Value<string>("CreationDate"));
-
-                if(task_creation.Date >= weekStart && task_creation.Date <= weekStart.AddDays(7) && (task_state == "Defined" || task_state == "In-Progress")) {
-                
-                    //todo: remove partials and just fetch the entire object with new learned flag fetch
-                    foreach(JToken partial_item in results) {
-            
-
-                        string item_url         = partial_item.Value<string>("_ref");
-                        JToken full_time_item   = GetJsonObject(item_url);
-                        var item_week_start     = Convert.ToDateTime(full_time_item["TimeEntryItem"].Value<string>("WeekStartDate"));//this is not accurate enough unfortunately.
-                        
-                        if(item_week_start.Date == weekStart.Date) {
-                            var custom = new TimeEntryItem() {
-                                json = full_time_item["TimeEntryItem"],
-                                taskName = full_time_item["TimeEntryItem"].Value<string>("TaskDisplayString"),
-                                storyName = full_time_item["TimeEntryItem"].Value<string>("WorkProductDisplayString"),
-                                timeEntryObjectId = full_time_item["TimeEntryItem"].Value<string>("ObjectID"),
-                                timeEntryValues = new List<JToken>()
-                            };
-                    
-                            string value_url = full_time_item["TimeEntryItem"]["Values"].Value<string>("_ref");
-                            JToken value_list = GetJsonObject(value_url);
-                            custom.timeEntryValues.AddRange(value_list["QueryResult"]["Results"]);
-                            time_entrys.Add(custom);
-                        }
-                    }                
-                }
-            }
-            
-            return time_entrys;
-        }
-
         public static TimeEntryItem CreateNewTimeEntryItem(string projectId, string userId, string taskId, DateTime weekStarttDate) {
 
             var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/timeentryitem/create?key={0}", CACHED_AUTH.token);
