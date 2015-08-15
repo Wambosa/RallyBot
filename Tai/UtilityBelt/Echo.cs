@@ -10,6 +10,28 @@ namespace Tai.UtilityBelt {
 
         internal static Byte LOG_LEVEL = 10;
 
+        internal static void TaskReport(List<Task> tasks, DateTime weekToReportOn){
+        
+            foreach(Task task in tasks) {
+
+                Echo.Out("Story Name: "+ task.storyName, 5);
+                Echo.Out("Task Name: " + task.taskName, 5);
+                Echo.Out("Time Values:\n", 5);
+
+                foreach(KeyValuePair<DateTime, JToken> pair in task.weeklyTime[weekToReportOn].dailyTime) {
+
+                    var time_value = pair.Value;
+
+                    Echo.Out("DateVal: "       + time_value.Value<string>("DateVal").GetPrettyDate(), 6);
+                    Echo.Out("Hours: "         + time_value.Value<string>("Hours"), 6);
+                    Echo.Out("Last Updated: "  + time_value.Value<string>("LastUpdated"), 6);
+                    Echo.Out("----------", 6);
+                }
+
+                Echo.Out("==================================================\n\n\n", 5);
+            }
+        }
+
         internal static void IterationReport(List<JToken> fullTeam, List<JToken> iterations, List<JToken> storys, List<JToken> tasks) {
 
             var report = new StringBuilder();

@@ -45,151 +45,74 @@ namespace Tai {
             }
         }
 
-        #region Savagery
-        //todo: refactor this savagery. viewers dont h8
-        internal static void AutomaticallySetTime_Alpha(TaiConfig config) {
+        internal static void AutomaticallyFillTaskTime(TaiConfig config) {
 
-            //required: must only autofill one week up to the target date (as to not appear suspicious under investigating)
-            //required: support target date in order to backfill easily
-
-            //1. get tasks relating to this.user current task list
-            config["targetUser"]    = config["targetUser"] ?? config["username"];
-            config["projectId"]     = config["projectId"] ?? ApiWrapper.GetProjectId(config["targetUser"]);
-            config["burndownDate"]  = config["burndownDate"] ?? DateTime.Today.ToString("yyyy-MM-dd");
+            config = PrepareConfigForTaskTimeAutoFill(config);
 
             var target_date = DateTime.Parse(config["burndownDate"]);
             var week_begin_date = target_date.AddDays(-(int)target_date.DayOfWeek);
-            var goal_concept = string.Format("burn down hours from {0} to {1} as role: {2}", week_begin_date.ToString("MMMM dd yyyy"), target_date.ToString("MMMM dd yyyy"), "dev");
             
-            Echo.Out(goal_concept, 2);
+            var my_id = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+            var tasks = ApiWrapper.GetTasks(my_id, week_begin_date);
 
+            CreateEmptyTimeCardForTasks(tasks, config);
 
-            var this_team   = ApiWrapper.GetTeamMembers(config["projectId"]);//erase this line
-            var my_id       = ApiWrapper.GetSpecificTeamMemberObjectId(this_team, config["username"]); //todo: just get the id directly somehow
-            var tasks       = ApiWrapper.GetTasks(my_id, week_begin_date);
-            var time_items  = ApiWrapper.GetTimeEntryItemsForOneTeamMember(tasks, week_begin_date); //todo: maybe class AWeekAtWork{list<timeitems>, computed int[] dailyHours, computed totalHours, method set priorities (orders list by given name list)}
-            
-            int daily_min   = config.hoursPerDay != 0 ? config.hoursPerDay : 8;
-            int[] day_hours = new int[] { 0, 0, 0, 0, 0, 0, 0 };
+            int daily_min = Convert.ToInt32(config["hoursPerDay"]);
+            int[] total_hours = SumTaskHoursByWeekStart(tasks, week_begin_date);
+            var priority_chart = BuildTaskPriorityChart(tasks, config);
+            int required_hours_this_week = (int)target_date.DayOfWeek * daily_min;
 
-            var priority_chart      = new Dictionary<string, TimeEntryItem>();
-            var priority_strings    = new string[]{"Administration", "Regression", "Iteration Planning", "Deployment Planning", "Environment Issue", "User Stories"};
-
-
-            Echo.Out(my_id + " is my object_id", 5);
-            Echo.Out(time_items.Count + " time entrys", 5);
+            Echo.Out(string.Format("burn down hours from {0} to {1} as role: {2}", week_begin_date.ToString("MMMM dd yyyy"), target_date.ToString("MMMM dd yyyy"), "dev"), 2);
+            Echo.Out(my_id + " is my ObjectID", 5);
+            Echo.Out(tasks.Count + " tasks since "+week_begin_date.ToString("yyyy MM dd"), 5);
             Echo.Out(". . . . . . . . . . .", 5);
+            Echo.TaskReport(tasks, week_begin_date);
+            Echo.Out("min hours needed to pass inspection: " + required_hours_this_week, 2);
+            Echo.Out("You have " + total_hours.Sum() + " hours", 2);
 
-            time_items = new List<TimeEntryItem>(); //force back down to zero for testing
-
-            // if there are no time entry values, then we need to create some******
-
-            if(time_items.Count == 0) {
+            if (total_hours.Sum() < required_hours_this_week) {
                 
-                foreach(JToken task in tasks) { //need a way to figure out if a task has a time item or not! that is the key here.
+                var workload = new List<JObject>();
 
-                    // need to actually create a new time item so that i can get an id to pass to new time values
-                    //Project + User + WeekStartDate + Task
-                    // return string id of new timeentryitem db.CreateNewTimeEntryItem(string projectId, string userId, string taskId, DateTime weekStartDate)
+                for(int i = 0; i<total_hours.Length; ++i) {
 
-                    var newId = ApiWrapper.CreateNewTimeEntryItem(config["projectId"], my_id, task.Value<string>("ObjectId"), week_begin_date);
+                    int this_days_time      = total_hours[i];
+                    string day_name         = Enum.GetName(typeof(DayOfWeek), i);
+                    int daily_time_needed   = daily_min - this_days_time; //this allows for overages since we are adding in increments of 8. should only allow for a maximum of (inspection_amount + increment-1)
+                    
+                    if(total_hours.Sum() < required_hours_this_week && daily_time_needed > 0 /**/ && i!=0 && i !=6) { //hard code ignore of sunday and saturaday for now
 
-                    newId = newId == string.Empty ? task.Value<string>("futuretimeitemid") : newId;
+                        Echo.Out(day_name + " FAILED inspection. Tai says, 'add some time motherfucker!'", 5);                        
 
-                    var ti = new TimeEntryItem() {
-                        self = null,
-                        storyName = task["WorkProduct"].Value<string>("_refObjectName"),
-                        taskName = task.Value<string>("Name"),
-                        timeEntryObjectId = newId, //will be the returned id value
-                        timeEntryValues = new List<JToken>()
-                    };
+                        int hoursToAdd = (int)Math.Ceiling(((double)daily_time_needed / (double)priority_chart.Count));
 
-                    time_items.Add(ti);
-                }
-            }
+                        foreach(KeyValuePair<string, Task> priority in priority_chart) {
 
-            // this loop does 3 very different things. it fills the day_hours array, it establishes priorities, and generates a cli report
-            foreach(TimeEntryItem item in time_items) {
+                            var task = priority.Value;
 
-                Echo.Out("Story Name: "+ item.storyName, 4);
-                Echo.Out("Task Name: " + item.taskName, 4);
-                Echo.Out("Time Values:\n", 4);
+                            DateTime post_date = week_begin_date.AddDays(i);
 
-                foreach(JToken time_value in item.timeEntryValues) {
-                    //todo: create WeekTime object that takes in an array for adding to all the days at once
-                    var t_val_date = Convert.ToDateTime(time_value["DateVal"].ToString());
-                    day_hours[(int)t_val_date.DayOfWeek] += time_value.Value<int>("Hours");
+                            JObject newTimeEntryValuePost = new JObject();
 
-                    Echo.Out("DateVal: "       + time_value.Value<string>("DateVal").GetPrettyDate(), 4);
-                    Echo.Out("Hours: "         + time_value.Value<string>("Hours"), 4);
-                    Echo.Out("Last Updated: "  + time_value.Value<string>("LastUpdated"), 4);
-                    Echo.Out("----------", 4);
-                }
-
-
-                //needs to be after time calcs
-                string priority_name = item.taskName.Contains(priority_strings, true);
-                if(priority_name != string.Empty) {
-                    if(!priority_chart.ContainsKey(priority_name)) {
-                        priority_chart.Add(priority_name, item);
-                    }
-                }
-
-                Echo.Out("==================================================\n\n\n", 4);
-            }
-
-            int required_hours = (int)target_date.DayOfWeek * daily_min; //this will not support sunday work. maybe support weekend autofilling as a bool switch next version. also allow config of the 8 hours to more or less
-
-            Echo.Out("min hours needed to pass inspection: " + required_hours, 2);
-            Echo.Out("You have " + day_hours.Sum() + " hours", 2); // if you do not match or exceed the min hours, then we will perform some autofilling
-
-            //then add up the time for all days that week. if the total is less than sun-today * 8, then add new time entry values foreach day where total time < 8 (not in this method fyi)
-
-            //consider while here while() TODO: instead of doing the submints in this loop. just generate a workload to perform later
-            if (day_hours.Sum() < required_hours) {
-                
-                for(int i = 0; i<day_hours.Length; ++i) {
-
-                    int this_days_time  = day_hours[i];
-                    string day_name     = Enum.GetName(typeof(DayOfWeek), i);
-                    int time_needed     = daily_min - this_days_time; //this allows for overages since we are adding in increments of 8. should only allow for a maximum of (inspection_amount + increment-1)
-                    int week_total_hours= day_hours.Sum();//important to refresh each loop
-
-                    if (week_total_hours < required_hours && time_needed > 0 /**/ && i!=0 && i !=6) { //hard code ignore of sunday and saturaday for now
-
-                        Echo.Out(day_name + " FAILED inspection. Tai says, 'add some time motherfucker!'", 5);
-                        
-                        while (time_needed > 0) {
-
-                            //muaha! now create the new time items using the api
-                            //remember we are looking into the payload manipulation via c#
-
-                            foreach(string priority in priority_strings) { //since days only get iterated over once, this will save a max of 6 hours in single day. either iterate over the days while week_time_needed > 0 OR add more priorty strings. the prior is superior because if tere is at least 1 priority, then it will get filled out to the max instead of each priority only getting filled out then closing
-
-                                var post_date = week_begin_date.AddDays(i);
-
-                                string existing_object_id = priority_chart[priority].getTimeValueObjectIdForThisDate(post_date);
-                                int existing_hours = priority_chart[priority].getTimeValueHoursForThisDate(post_date);
-
-                                JObject postJson = new JObject();
-                                postJson["Verb"] =  existing_object_id != string.Empty ? "update" : "insert";
-                                postJson["ObjectID"] = existing_object_id;
-                                postJson["DateVal"] = post_date.ToString("yyyy-MM-ddTHH:mm:ssZ");
-                                postJson["Hours"] = (existing_hours+1);
-                                postJson["TimeEntryItem"] = priority_chart[priority].timeEntryObjectId;
-                                
-                                Echo.Out(postJson.ToString(), 6);
-                                Echo.Out("..........", 6);
-
-                                ApiWrapper.PostNewTimeEntryValue(postJson); // store in workload array instead of executing in the loop
-                                //if post was a success then add time to mem
-                                day_hours[i] += (existing_hours+1);
-
-                                time_needed -= (int)postJson["Hours"];
-                                if(time_needed <= 0) {
-                                    break;}                                
-
+                            if(task.weeklyTime[week_begin_date].dailyTime.ContainsKey(post_date)) {
+                                    
+                                newTimeEntryValuePost["Verb"] = "update";
+                                newTimeEntryValuePost["ObjectID"] = task.weeklyTime[week_begin_date].dailyTime[post_date].Value<string>("ObjectID");
+                                newTimeEntryValuePost["Hours"] = task.weeklyTime[week_begin_date].dailyTime[post_date].Value<int>("Hours") + hoursToAdd;
+                            }else{
+                                newTimeEntryValuePost["Verb"] = "insert";
+                                newTimeEntryValuePost["DateVal"] = post_date.ToString("yyyy-MM-ddTHH:mm:ssZ");
+                                newTimeEntryValuePost["TimeEntryItem"] = task.weeklyTime[week_begin_date].timeEntryObjectId;
+                                newTimeEntryValuePost["Hours"] = hoursToAdd;
                             }
+
+                            Echo.Out(newTimeEntryValuePost.ToString(), 6);
+                            Echo.Out("..........", 6);
+
+                            workload.Add(newTimeEntryValuePost);
+                            total_hours[i] += hoursToAdd;
+                            daily_time_needed -= hoursToAdd;
+                            if(daily_time_needed <= 0){break;}
                         }
 
                     }else{
@@ -197,11 +120,65 @@ namespace Tai {
                     }
                 }
 
+                ApiWrapper.SubmitTaskTimeValue(workload);
+
             }else {
                 Echo.Out("Autofilling is not needed since you have already filled out the minimum necessary time");
             }
         }
-        #endregion Savagery
+
+        private static TaiConfig PrepareConfigForTaskTimeAutoFill(TaiConfig conf) {
+            conf["targetUser"] = conf["targetUser"] ?? conf["username"];
+            conf["projectId"] = conf["projectId"] ?? ApiWrapper.GetProjectId(conf["targetUser"]);
+            conf["burndownDate"] = conf["burndownDate"] ?? DateTime.Today.ToString("yyyy-MM-dd");
+            conf["hoursPerDay"] = conf["hoursPerDay"] ?? "8";
+            conf["taskNames"] = conf["taskNames"] ?? new string[]{"Administration", "Regression", "Iteration Planning", "Deployment Planning", "Environment Issue", "User Stories"}.ToJson();
+            return conf;
+        }
+
+        private static void CreateEmptyTimeCardForTasks(List<Task> tasks, TaiConfig config){
+
+            var target_date = DateTime.Parse(config["burndownDate"]);
+            var week_begin_date = target_date.AddDays(-(int)target_date.DayOfWeek);
+            var my_id = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+
+            foreach(Task task in tasks) {
+
+                if(!task.weeklyTime.ContainsKey(week_begin_date.Date)) {
+                    /* this can and will create an invisible time item for tasks that don't belong to this week. no damage will be done */
+                    task.weeklyTime.Add(week_begin_date.Date, ApiWrapper.CreateNewTimeEntryItem(config["projectId"], my_id, task.taskObjectId, week_begin_date));
+                }
+            }
+        }
+
+        private static int[] SumTaskHoursByWeekStart(List<Task> tasks, DateTime weekStart){
+            
+            int[] total_hours = new int[]{0,0,0,0,0,0,0};
+            
+            foreach(Task task in tasks) {
+                total_hours = total_hours.Combine(task.GetWeekHoursTotal(weekStart));}
+
+            return total_hours;
+        }
+
+        private static Dictionary<string, Task> BuildTaskPriorityChart(List<Task> tasks, TaiConfig config){
+
+            string[] priority_strings = JArray.Parse(config["taskNames"]).ToArray();
+            var priority_chart = new Dictionary<string, Task>();
+
+            foreach(Task task in tasks) {
+
+                string priority_name = task.taskName.ContainsMatch(priority_strings);
+
+                if(priority_name != string.Empty) {
+                    if(!priority_chart.ContainsKey(priority_name)) {
+                        priority_chart.Add(priority_name, task);
+                    }
+                }
+            }
+
+            return priority_chart;
+        }
 
         private static TaiConfig FixMissingEmailProperties(TaiConfig conf) {
             conf["emailGreeting"] = conf["emailGreeting"] ?? "Hi Boss";

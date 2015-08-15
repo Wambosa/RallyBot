@@ -3,6 +3,20 @@ namespace Tai.Extensions {
 
     public static class CustomExtensions {
 
+        public static string ToJson(this string[] arr){
+
+            string joined = "[";
+
+            for(int i=0;i<arr.Length;++i) {
+                joined += '"'+arr[i]+'"'; 
+                joined += i < arr.Length-1 ? ", " : "";
+            }
+
+            joined += "]";
+
+            return joined;
+        }
+
         public static string[] ToArray(this Newtonsoft.Json.Linq.JArray arr) {
             
             string[] builtIn = new string[arr.Count];
@@ -11,6 +25,19 @@ namespace Tai.Extensions {
                 builtIn[i] = (string)arr[i];}
 
             return builtIn;
+        }
+
+        public static int[] Combine(this int[] original, int[] newValues){
+
+            int[] resulting = original;
+        
+            if(original.Length == newValues.Length){
+                for(int i=0;i<original.Length;++i){
+                    resulting[i] += newValues[i];
+                }
+            }
+            
+            return resulting;
         }
 
         public static int Sum(this int[] arr) {
@@ -38,7 +65,7 @@ namespace Tai.Extensions {
             return isFound;
         }
 
-        public static string Contains(this string hayStack, string[] needles, bool returnMatch = true) {
+        public static string ContainsMatch(this string hayStack, string[] needles) {
 
             string firstWord    = string.Empty;
             bool isFound        = false;

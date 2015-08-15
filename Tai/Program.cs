@@ -17,7 +17,7 @@ namespace Tai {
         private static Dictionary<TAI_COMMAND, TaiMethod> TaiTakeCareOfThis = new Dictionary<TAI_COMMAND, TaiMethod>() {
             {TAI_COMMAND.NONE, _ => {Echo.HelpText();}},
             {TAI_COMMAND.REPORT, CLIMethod.WriteStatusReportForAnIteration},
-            {TAI_COMMAND.BURNDOWN, CLIMethod.AutomaticallySetTime_Alpha},
+            {TAI_COMMAND.BURNDOWN, CLIMethod.AutomaticallyFillTaskTime},
             {TAI_COMMAND.SETBUILDID, CLIMethod.SetStoryBuildId}
         };
 
@@ -42,7 +42,10 @@ namespace Tai {
                 {"email-greeting=", "", hi => {config["emailGreeting"] = hi;}},
                 {"email-signature=", "", me => {config["emailSignature"] = me;}},
                 {"iteration-number=", "", num => {config["iterationNumber"] = num;}},
-                {"status-report-names=", "", names => {config["statusReportNames"] = names;}},
+                {"status-report-names=", "", names => {config["statusReportNames"] = names;}}, //test these arrays, i will need to serialize them right
+                {"task-names=", "", names => {config["taskNames"] = names;}}, //test these arrays, i will need to serialize them right
+
+                {"hours-per-day=", "", hours => {config["hoursPerDay"] = hours;}},
                 {"v=|verbosity=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},
                 {"no-interaction", "", _ => {Grapple.isAllowingHumanInteraction = false;}},
 

@@ -66,7 +66,8 @@
     <Compile Include="Tai\CLIMethod.cs" />
     <Compile Include="Tai\Extensions.cs" />
     <Compile Include="Tai\CachedAuthentication.cs" />
-    <Compile Include="Tai\TimeEntryItem.cs" />
+    <Compile Include="Tai\Data\Task.cs" />
+    <Compile Include="Tai\Data\TimeEntryItem.cs" />
     <Compile Include="Tai\TaiConfig.cs" />
     <Compile Include="Tai\ApiWrapper.cs" />
     <Compile Include="Tai\Program.cs" />

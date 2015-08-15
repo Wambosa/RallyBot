@@ -115,10 +115,6 @@ namespace Tai {
             return iterations;
         }
 
-        public static string GetUserObjectId(string userName) {
-            return "todo";
-        }
-
         public static List<JToken> GetTeamMembers(string projectId) {
 
             var people  = new List<JToken>();
@@ -173,10 +169,10 @@ namespace Tai {
             return tasks;
         }
 
-        public static List<JToken> GetTasks(string userId, DateTime weekStart) {
+        public static List<Task> GetTasks(string userId, DateTime weekStart) {
             //https:// rally1.rallydev.com/slm/webservice/v2.0/task?query=(Owner.ObjectId%20=%2033470899520)&fetch=true
 
-            List<JToken> tasks = new List<JToken>();
+            List<Task> tasks = new List<Task>();
 
             var query = string.Format("task?query=(Owner.ObjectId = {0})&pagesize=200&fetch=true", userId);
             var json = GetJsonObject(BASE_URL + query);
@@ -186,11 +182,31 @@ namespace Tai {
 
                 var task_creation = Convert.ToDateTime(task.Value<string>("CreationDate"));
 
+                //may also need to confirm state at some point
                 if(task_creation.Date >= weekStart.Date) {
-                    tasks.Add(task);}
+
+                    tasks.Add(new Task() {
+                        json = task,
+                        taskName = task.Value<string>("Name"),
+                        taskObjectId = task.Value<string>("ObjectID"),
+                        storyName = task["WorkProduct"].Value<string>("_refObjectName"),
+                        weeklyTime = ApiWrapper.GetTimeEntryItems(task.Value<string>("ObjectID"))
+                    });
+                }
             }
 
             return tasks;
+        }
+
+        public static string GetTargetUserObjectId(string userName) {
+            // https:// rally1.rallydev.com/slm/webservice/v2.0/user?query=(EmailAddress = bond@jbond.com)&fetch=true        
+            var query   = string.Format("user?query=(EmailAddress = {0})&fetch=true", userName);
+            var json    = GetJsonObject(BASE_URL + query);
+
+            //check for errors .... meah
+            string id = json["QueryResult"]["Results"][0].Value<string>("ObjectID");
+
+            return id;
         }
 
         public static string GetSpecificTeamMemberObjectId(List<JToken> myTeam, string targetUsername) {
@@ -209,6 +225,38 @@ namespace Tai {
 
             return object_id;
         }
+
+        private static Dictionary<DateTime, TimeEntryItem> GetTimeEntryItems(string taskObjectId) {
+            
+            var weekly_time = new Dictionary<DateTime, TimeEntryItem>();
+                
+            var query       = string.Format("timeentryitem?query=(Task.ObjectId = {0})&pagesize=200&fetch=true", taskObjectId);
+            var json        = GetJsonObject(BASE_URL + query);
+            var results     = json["QueryResult"]["Results"];
+
+            foreach(JToken week in results) {
+                
+                var week_obj = new TimeEntryItem(){
+                    json = week,
+                    weekStartDate = week.Value<DateTime>("WeekStartDate").Date,
+                    taskName = week.Value<string>("TaskDisplayString"),
+                    storyName = week.Value<string>("WorkProductDisplayString"),
+                    timeEntryObjectId = week.Value<string>("ObjectID"),
+                    dailyTime = new Dictionary<DateTime, JToken>()
+                };
+                    
+                string day_url = week["Values"].Value<string>("_ref");
+                JToken day_list = GetJsonObject(day_url);
+
+                foreach(JToken day in day_list["QueryResult"]["Results"]) {
+                    week_obj.dailyTime.Add(day.Value<DateTime>("DateVal").Date, day);}
+
+                weekly_time.Add(week_obj.weekStartDate, week_obj);
+            }
+
+            return weekly_time;
+        }
+
 
         public static List<TimeEntryItem> GetTimeEntryItemsForOneTeamMember(List<JToken> tasks, DateTime weekStart) {
             //https:// rally1.rallydev.com/slm/webservice/v2.0/timeentryitem?query=((Project.ObjectId = 15188699182) and (User.ObjectId = 33470899520))
@@ -236,7 +284,7 @@ namespace Tai {
                         
                         if(item_week_start.Date == weekStart.Date) {
                             var custom = new TimeEntryItem() {
-                                self = full_time_item["TimeEntryItem"],
+                                json = full_time_item["TimeEntryItem"],
                                 taskName = full_time_item["TimeEntryItem"].Value<string>("TaskDisplayString"),
                                 storyName = full_time_item["TimeEntryItem"].Value<string>("WorkProductDisplayString"),
                                 timeEntryObjectId = full_time_item["TimeEntryItem"].Value<string>("ObjectID"),
@@ -255,7 +303,7 @@ namespace Tai {
             return time_entrys;
         }
 
-        public static string CreateNewTimeEntryItem(string projectId, string userId, string taskId, DateTime weekStarttDate) {
+        public static TimeEntryItem CreateNewTimeEntryItem(string projectId, string userId, string taskId, DateTime weekStarttDate) {
 
             var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/timeentryitem/create?key={0}", CACHED_AUTH.token);
 
@@ -267,28 +315,62 @@ namespace Tai {
 
             var response = JToken.Parse(HttpService.PostJson(url, final_post.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH));
             
-            bool has_error = response["CreateResult"].Value<string>("Errors").Contains("violation");
-
-            return has_error ? string.Empty : response["CreateResult"].Value<string>("ObjectID");
+            bool has_error = ((JArray)response["CreateResult"]["Errors"]).Count > 0;
+            
+            if(has_error) {
+                Console.WriteLine("Duplicate Time Entry Item creation attempt", 0);
+            }
+            
+            return new TimeEntryItem(){
+                
+                json = response["CreateResult"],
+                taskName = response["CreateResult"].Value<string>("TaskDisplayString"),
+                storyName = "",
+                timeEntryObjectId = response["CreateResult"].Value<string>("ObejctID"),
+                weekStartDate = weekStarttDate,
+                dailyTime = new Dictionary<DateTime,JToken>()
+            };
         }
 
-        public static JToken PostNewTimeEntryValue(JObject postJson) {
+        public static JToken SubmitTaskTimeValue(JObject newTimeValue) {
             //todo: clean this up
 
-            var url_action = (string)postJson["Verb"] == "insert" ? "create?key=" + CACHED_AUTH.token : (string)postJson["ObjectID"] + "?key=" + CACHED_AUTH.token;
+            var url_action = (string)newTimeValue["Verb"] == "insert" ? "create?key=" + CACHED_AUTH.token : (string)newTimeValue["ObjectID"] + "?key=" + CACHED_AUTH.token;
 
             var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/timeentryvalue/{0}", url_action);
 
             var final_post = new JObject();
             final_post["TimeEntryValue"] = new JObject();
 
-            final_post["TimeEntryValue"]["DateVal"] = postJson.Value<string>("DateVal");
-            final_post["TimeEntryValue"]["Hours"] = postJson.Value<string>("Hours");
-            final_post["TimeEntryValue"]["TimeEntryItem"] = postJson.Value<string>("TimeEntryItem");
+            final_post["TimeEntryValue"]["DateVal"] = newTimeValue.Value<string>("DateVal");
+            final_post["TimeEntryValue"]["Hours"] = newTimeValue.Value<string>("Hours");
+            final_post["TimeEntryValue"]["TimeEntryItem"] = newTimeValue.Value<string>("TimeEntryItem");
 
-            //var response = HttpService.PostJson(url, final_post.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), RALLY_AUTH);
-            //todo: 
-            return final_post; //response;
+            var response = HttpService.PostJson(url, final_post.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH); 
+            return response;
+        }
+
+        public static List<JToken> SubmitTaskTimeValue(List<JObject> timeCard) {         
+            // see if it is possible to update multiple objects at once... until then loop
+
+            var responses = new List<JToken>();
+
+            foreach(JObject punch in timeCard) {
+
+                var url_action = punch.Value<string>("Verb") == "insert" ? "create?key=" + CACHED_AUTH.token : punch.Value<string>("ObjectID") + "?key=" + CACHED_AUTH.token;
+
+                var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/timeentryvalue/{0}", url_action);
+
+                var timeValueJson = new JObject();
+                timeValueJson["TimeEntryValue"] = new JObject();
+                timeValueJson["TimeEntryValue"]["DateVal"] = punch.Value<string>("DateVal");
+                timeValueJson["TimeEntryValue"]["Hours"] = punch.Value<string>("Hours");
+                timeValueJson["TimeEntryValue"]["TimeEntryItem"] = punch.Value<string>("TimeEntryItem");
+
+                responses.Add(HttpService.PostJson(url, timeValueJson.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH));
+            }
+
+            return responses;
         }
 
         public static JToken UpdateStoryBuildId(JObject postJson, string userStoryURL) {
