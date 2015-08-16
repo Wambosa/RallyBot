@@ -33,7 +33,7 @@ namespace Tai {
                 Echo.Out("User story ID: " + config["storyId"], 5);
                 Echo.Out("Build ID: " + config["buildId"], 5);
 
-                string UserStoryURL = ApiWrapper.GetUserStoryRef(config["storyId"]);            
+                string UserStoryURL = ApiWrapper.GetUserStoryReferenceUrl(config["storyId"]);
 
                 JObject postJson = new JObject();
                 postJson["c_BuildID"] = config["buildId"];
@@ -125,6 +125,30 @@ namespace Tai {
             }else {
                 Echo.Out("Autofilling is not needed since you have already filled out the minimum necessary time");
             }
+        }
+
+        internal static void CreateTaskForStory(TaiConfig config){
+            
+            config = PrepareConfigForTaskCreation(config);
+
+            JObject newTask = new JObject();
+            newTask["Name"] = config["taskNames"];//just create one for now. later iterate over these and create one for each name
+            newTask["Description"] = "";
+            newTask["Owner"] = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+            newTask["Estimate"] = "10";
+            newTask["State"] = "Defined";
+            newTask["TaskIndex"] = 1;
+            newTask["WorkProduct"] = ApiWrapper.GetUserStory(config["storyId"]).Value<string>("ObjectID");
+
+            Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 1);
+            Echo.Out(ApiWrapper.CreateNewTask(newTask).ToString(Newtonsoft.Json.Formatting.Indented));
+
+        }
+        private static TaiConfig PrepareConfigForTaskCreation(TaiConfig conf) {
+            conf["targetUser"] = conf["targetUser"] ?? conf["username"];
+            conf["storyId"] = conf["storyId"] ?? "US00000";
+            conf["taskNames"] = conf["taskNames"] ?? "new task for" + conf["targetUser"]; //have a flag that auto gens task name based on story requirements. rexgex split a sentence or something
+            return conf;
         }
 
         private static TaiConfig PrepareConfigForTaskTimeAutoFill(TaiConfig conf) {

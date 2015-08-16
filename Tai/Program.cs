@@ -1,4 +1,4 @@
-﻿/* keeping mono options for this project because reasons */
+﻿
 using System;
 using Mono.Options;
 using Tai.UtilityBelt;
@@ -18,7 +18,8 @@ namespace Tai {
             {TAI_COMMAND.NONE, _ => {Echo.HelpText();}},
             {TAI_COMMAND.REPORT, CLIMethod.WriteStatusReportForAnIteration},
             {TAI_COMMAND.BURNDOWN, CLIMethod.AutomaticallyFillTaskTime},
-            {TAI_COMMAND.SETBUILDID, CLIMethod.SetStoryBuildId}
+            {TAI_COMMAND.SETBUILDID, CLIMethod.SetStoryBuildId},
+            {TAI_COMMAND.CREATETASK, CLIMethod.CreateTaskForStory}
         };
 
         public static void Main(string[] args) {
@@ -28,9 +29,9 @@ namespace Tai {
             //muahahha anonymouse functions in c# !!!
 	        var options = new OptionSet() {
                 { "iteration-report", "", _ => {SESSION_ACTION = TAI_COMMAND.REPORT;}},
-                { "fill-time-values", "", _ => {SESSION_ACTION = TAI_COMMAND.BURNDOWN;}},
+                { "auto-fill-time", "", _ => {SESSION_ACTION = TAI_COMMAND.BURNDOWN;}},
                 { "set-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.SETBUILDID;}},
-                //todo: generic task creation
+                { "create-task", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATETASK;}},
                 { "?|h|help", "", _ => Echo.HelpText()},
                                 
                 {"api-url=", "", url => {config["apiUrl"] = url;}}, 
@@ -43,7 +44,7 @@ namespace Tai {
                 {"email-signature=", "", me => {config["emailSignature"] = me;}},
                 {"iteration-number=", "", num => {config["iterationNumber"] = num;}},
                 {"status-report-names=", "", names => {config["statusReportNames"] = names;}}, //test these arrays, i will need to serialize them right
-                {"task-names=", "", names => {config["taskNames"] = names;}}, //test these arrays, i will need to serialize them right
+                {"task-name=|task-names=", "", names => {config["taskNames"] = names;}}, //test these arrays, i will need to serialize them right
 
                 {"hours-per-day=", "", hours => {config["hoursPerDay"] = hours;}},
                 {"v=|verbosity=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},

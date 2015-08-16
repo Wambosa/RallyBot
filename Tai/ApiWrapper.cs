@@ -125,6 +125,15 @@ namespace Tai {
             return people;
         }
 
+        public static JToken GetUserStory(string formattedId) {
+
+            var query = string.Format("HierarchicalRequirement?query=(FormattedID = {0})&fetch=true", formattedId);
+            var jsonQuery = GetJsonObject(BASE_URL + query);
+            var jsonQueryResults = jsonQuery["QueryResult"]["Results"];
+
+            return jsonQueryResults[0]; //check that there is a result. may need try catch
+        }
+
         public static List<JToken> GetUserStories(string projectId, List<JToken> iterations) {
 
             //https:// rally1.rallydev.com/slm/webservice/v2.0/HierarchicalRequirement?query=((Project.ObjectID%20=%2015188699182)%20and%20(Iteration.ObjectID%20=%2038080627861))
@@ -286,21 +295,43 @@ namespace Tai {
             };
         }
 
-        public static JToken SubmitTaskTimeValue(JObject newTimeValue) {
-            //todo: clean this up
+        public static JToken CreateNewAttachment(JObject newAttachment) {
+            //create attachment seperately and after the new task is created only if there are attachments to be had.
+            //https:// rally1.rallydev.com/slm/webservice/v2.0/attachment/create
 
-            var url_action = (string)newTimeValue["Verb"] == "insert" ? "create?key=" + CACHED_AUTH.token : (string)newTimeValue["ObjectID"] + "?key=" + CACHED_AUTH.token;
+            var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/attachment/create?key={0}", CACHED_AUTH.token);
 
-            var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/timeentryvalue/{0}", url_action);
+            var json = new JObject();
+            json["Task"] = new JObject();
+            json["Task"]["Artifact"] = newAttachment.Value<string>("Artifact"); // the task or story to be associated with (use the ref url)
+            json["Task"]["Content"] = newAttachment.Value<string>("Content"); //base64Binary (might need to create a new jobject with name [attachment content][Content])
+            json["Task"]["ContentType"] = newAttachment.Value<string>("ContentType"); // "application/octet-stream"
+            json["Task"]["Name"] = newAttachment.Value<string>("Name"); // max chara limit 1024
+            json["Task"]["User"] = newAttachment.Value<string>("WorkProduct"); // user object id
 
-            var final_post = new JObject();
-            final_post["TimeEntryValue"] = new JObject();
+            var response = HttpService.PostJson(url, json.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH);
 
-            final_post["TimeEntryValue"]["DateVal"] = newTimeValue.Value<string>("DateVal");
-            final_post["TimeEntryValue"]["Hours"] = newTimeValue.Value<string>("Hours");
-            final_post["TimeEntryValue"]["TimeEntryItem"] = newTimeValue.Value<string>("TimeEntryItem");
+            return response;
+        }
 
-            var response = HttpService.PostJson(url, final_post.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH); 
+        public static JToken CreateNewTask(JObject newTask) {
+            
+            var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/task/create?key={0}", CACHED_AUTH.token);
+
+            var json = new JObject();
+            json["Task"] = new JObject();
+            json["Task"]["Name"] = newTask.Value<string>("Name");
+            json["Task"]["Description"] = newTask.Value<string>("Description");
+            json["Task"]["Owner"] = newTask.Value<string>("Owner");
+            json["Task"]["Estimate"] = newTask.Value<string>("Estimate");
+            json["Task"]["State"] = newTask.Value<string>("State"); /* "Defined", "In-Progress", "Completed" */
+            json["Task"]["TaskIndex"] = newTask.Value<string>("TaskIndex"); // just default to 1 ?
+            json["Task"]["WorkProduct"] = newTask.Value<string>("WorkProduct"); // story formattedId ? probably not.
+
+            var response = HttpService.PostJson(url, json.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH);
+
+            // foreach json["Task"]["Attachments"], create the attachment object AFTER succesful task creation. because i will need the ref url to associate the attachments
+
             return response;
         }
 
@@ -342,9 +373,9 @@ namespace Tai {
             return response;
         }
 
-        public static string GetUserStoryRef(string storyId) {
+        public static string GetUserStoryReferenceUrl(string formattedId) {
 
-            var query = string.Format("HierarchicalRequirement?query=(FormattedID = {0})", storyId);
+            var query = string.Format("HierarchicalRequirement?query=(FormattedID = {0})", formattedId);
             var jsonQuery = GetJsonObject(BASE_URL + query);   
             var jsonQueryResults = jsonQuery["QueryResult"]["Results"];
 
