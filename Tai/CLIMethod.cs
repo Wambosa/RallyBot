@@ -141,7 +141,7 @@ namespace Tai {
             newTask["WorkProduct"] = ApiWrapper.GetUserStory(config["storyId"]).Value<string>("ObjectID");
 
             Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 1);
-            Echo.Out(ApiWrapper.CreateNewTask(newTask).ToString(Newtonsoft.Json.Formatting.Indented));
+            Echo.Out(ApiWrapper.CreateNewTask(newTask).ToString(Newtonsoft.Json.Formatting.None));
 
         }
         private static TaiConfig PrepareConfigForTaskCreation(TaiConfig conf) {

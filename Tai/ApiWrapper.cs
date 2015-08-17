@@ -322,6 +322,7 @@ namespace Tai {
             json["Task"] = new JObject();
             json["Task"]["Name"] = newTask.Value<string>("Name");
             json["Task"]["Description"] = newTask.Value<string>("Description");
+            json["Task"]["Notes"] = newTask.Value<string>("Notes");
             json["Task"]["Owner"] = newTask.Value<string>("Owner");
             json["Task"]["Estimate"] = newTask.Value<string>("Estimate");
             json["Task"]["State"] = newTask.Value<string>("State"); /* "Defined", "In-Progress", "Completed" */

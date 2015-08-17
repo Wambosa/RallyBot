@@ -34,28 +34,36 @@ namespace Tai {
 
         public TaiConfig(string fileLocation) {
 
-            string raw = System.IO.File.ReadAllText(@fileLocation);
+            try{
 
-            if (raw.Length > 50) {//shallow validation
+                string raw = System.IO.File.ReadAllText(@fileLocation);
 
-                JObject json_config = JObject.Parse(raw);
+                if (raw.Length > 50) {//shallow validation
 
-                foreach(var property in json_config) {
-                    this[property.Key] = property.Value.ToString();}
+                    JObject json_config = JObject.Parse(raw);
 
-                hasPhysicalConfigFile = true;
-            }
+                    foreach(var property in json_config) {
+                        this[property.Key] = property.Value.ToString();}
+
+                    hasPhysicalConfigFile = true;
+                }
+            
+            }catch{/* i dont care if config is missing or messed up */}
         }
 
         public override string ToString() {
         
-            //convert this entire thing into the conf file format i know and love
-            return "todo";
+            var jObject = new JObject();
+
+            foreach(KeyValuePair<string, string> pair in this){
+                jObject[pair.Key] = pair.Value;}
+
+            return jObject.ToString(Newtonsoft.Json.Formatting.Indented);
         }
 
         private string ValidateConfigurationFileAtLocation() {
             
-            
+            //meah...
             return "error if file length too short or if a property is found that is not supported";
         }
     }
