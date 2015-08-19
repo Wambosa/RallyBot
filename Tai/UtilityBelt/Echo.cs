@@ -59,7 +59,7 @@ namespace Tai.UtilityBelt {
                 report.AppendLine("-----------------------\n");
             }
 
-            Out(report, 2);
+            Out(report, 1);
         }
 
 		internal static void WelcomeText() {

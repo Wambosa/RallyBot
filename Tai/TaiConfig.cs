@@ -8,8 +8,8 @@ namespace Tai {
         public new string this[string column] {
 
             get {
-                if (ContainsKey(column)) {//todo: need to check for empty strings and treat as null
-                    return base[column];
+                if (ContainsKey(column)) {
+                    return base[column] == "" ? null : base[column];
                 } else {
                     return null;}
             }

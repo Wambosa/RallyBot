@@ -86,7 +86,7 @@ namespace Tai {
             var most_recent = json["QueryResult"]["Results"].First;
             var assumed_iteration_num = Regex.Match(most_recent.Value<string>("Name"), @"\s\d\d").Value;
 
-            return assumed_iteration_num;
+            return assumed_iteration_num;//this returns with padding
         }
 
         public static List<JToken> GetIteration(string projectId) {
@@ -314,6 +314,21 @@ namespace Tai {
             return response;
         }
 
+        public static JToken CreateRallyObject(string objectType, JObject newObject) {
+            //generic creation of an object.
+            var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/{0}/create?key={1}", objectType, CACHED_AUTH.token);
+
+            var json = new JObject();
+            json[objectType] = new JObject();
+
+            foreach(var property in newObject){
+                json[objectType][property.Key] = property.Value.Value<string>(property.Key);}
+
+            var response = HttpService.PostJson(url, json.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH);
+
+            return response;
+        }
+
         public static JToken CreateNewTask(JObject newTask) {
             
             var url = string.Format("https://rally1.rallydev.com/slm/webservice/v2.0/task/create?key={0}", CACHED_AUTH.token);
@@ -327,7 +342,7 @@ namespace Tai {
             json["Task"]["Estimate"] = newTask.Value<string>("Estimate");
             json["Task"]["State"] = newTask.Value<string>("State"); /* "Defined", "In-Progress", "Completed" */
             json["Task"]["TaskIndex"] = newTask.Value<string>("TaskIndex"); // just default to 1 ?
-            json["Task"]["WorkProduct"] = newTask.Value<string>("WorkProduct"); // story formattedId ? probably not.
+            json["Task"]["WorkProduct"] = newTask.Value<string>("WorkProduct");
 
             var response = HttpService.PostJson(url, json.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH);
 

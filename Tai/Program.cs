@@ -1,6 +1,6 @@
-﻿
-using System;
+﻿using System;
 using Mono.Options;
+using Tai.Extensions;
 using Tai.UtilityBelt;
 using System.Collections.Generic;
 
@@ -8,18 +8,19 @@ namespace Tai {
 
     class Program {
 
-        delegate void TaiMethod(TaiConfig config);
+        delegate void TaiMethod(TaiConfig config); //todo: delegate string TaiMethod(TaiConfig conf, OUTPUT_TYPE outType)
 
-        private enum TAI_COMMAND {NONE, REPORT, BURNDOWN, SETBUILDID, CREATETASK};
+        private enum TAI_COMMAND {NONE, ITERATION_REPORT, BURNDOWN, SET_BUILDID, CREATE_TASK, GET_ITERATION};
 
         private static TAI_COMMAND SESSION_ACTION = TAI_COMMAND.NONE;
 
         private static Dictionary<TAI_COMMAND, TaiMethod> TaiTakeCareOfThis = new Dictionary<TAI_COMMAND, TaiMethod>() {
             {TAI_COMMAND.NONE, _ => {Echo.HelpText();}},
-            {TAI_COMMAND.REPORT, CLIMethod.WriteStatusReportForAnIteration},
+            {TAI_COMMAND.ITERATION_REPORT, CLIMethod.WriteStatusReportForAnIteration},
             {TAI_COMMAND.BURNDOWN, CLIMethod.AutomaticallyFillTaskTime},
-            {TAI_COMMAND.SETBUILDID, CLIMethod.SetStoryBuildId},
-            {TAI_COMMAND.CREATETASK, CLIMethod.CreateTaskForStory}
+            {TAI_COMMAND.SET_BUILDID, CLIMethod.SetStoryBuildId},
+            {TAI_COMMAND.CREATE_TASK, CLIMethod.CreateTaskForStory},
+            {TAI_COMMAND.GET_ITERATION, CLIMethod.GetCurrentIteration},
         };
 
         public static void Main(string[] args) {
@@ -27,10 +28,12 @@ namespace Tai {
             TaiConfig config = new TaiConfig(@Grapple.GetThisFolder() + "tai.conf");
 
             var options = new OptionSet() {
-                { "iteration-report", "", _ => {SESSION_ACTION = TAI_COMMAND.REPORT;}},
+                { "iteration-report", "", _ => {SESSION_ACTION = TAI_COMMAND.ITERATION_REPORT;}},
                 { "auto-fill-time", "", _ => {SESSION_ACTION = TAI_COMMAND.BURNDOWN;}},
-                { "set-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.SETBUILDID;}},
-                { "create-task", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATETASK;}},
+                { "set-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.SET_BUILDID;}},
+                { "create-task", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_TASK;}},
+                { "get-iteration", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_ITERATION;}},
+
                 { "?|h|help", "", _ => Echo.HelpText()},
                 {"no-interaction", "", _ => {Grapple.isAllowingHumanInteraction = false;}},
                 
@@ -50,19 +53,24 @@ namespace Tai {
                 {"note=|notes=", "", note => {config["notes"] = note;}},
                 {"block=|blocked=", "", isblock => {config["isBlocked"] = isblock;}},
                 {"estimate-hours=", "", hours => {config["estimateHours"] = hours;}},
-                
-                {"status-report-names=", "", names => {config["statusReportNames"] = names;}}, //test these arrays, i will need to serialize them right
-                {"task-name=|task-names=", "", names => {config["taskNames"] = names;}}, //test these arrays, i will need to serialize them right
-                {"attachment=|attachments=", "", files => {config["attachments"] = files;}}, //can be the path or raw file, but all types must be the same for this up and comming version
+                {"task-state=", "", state => {config["taskState"] = state;}}, /* "Defined", "In-Progress", "Completed" */
+                {"task-name=", "", name => {config["taskName"] = name;}},
                 {"attachment-type=", "", type => {config["attatchmentType"] = type;}}, //take in the mime-type. type == "base64" indicates that tai does not need to encode it
 
+                {"status-report-names=", "", names => {config["statusReportNames"] = names.Split(',').ToJson();}},
+                {"task-names=", "", names => {config["taskNames"] = names.Split(',').ToJson();}},
+                {"attachment=|attachments=", "", files => {config["attachments"] = files.Split(',').ToJson();}}, //can be the path or raw file, but all types must be the same for this up and comming version
+                
                 {"l=|log-level=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},
                                 
                 /*
-                team-name
+                later...
+                get-stories
+                get-tasks
 
+                team-name=
 
-
+                output-type= json csv none(same as log-level 0) cli(default)
                 */
             };
 
@@ -81,7 +89,7 @@ namespace Tai {
 
             TaiTakeCareOfThis[SESSION_ACTION](config);
 
-            Echo.Out("done", 2);
+            Echo.Out("done", 5);
         }
     }
 }

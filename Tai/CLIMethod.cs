@@ -10,9 +10,7 @@ namespace Tai {
 
         internal static void WriteStatusReportForAnIteration(TaiConfig config) {
 
-            config["targetUser"] = config["targetUser"] ?? config["username"];
-            config["projectId"] = config["projectId"] ?? ApiWrapper.GetProjectId(config["targetUser"]);
-            config["iterationNumber"] = config["iterationNumber"] ?? ApiWrapper.GetIterationNumber(config["projectId"]);
+            config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber");
 
             var team        = ApiWrapper.GetTeamMembers(config["projectId"]);
             var iterations  = ApiWrapper.GetIteration(config["projectId"], config["iterationNumber"]);
@@ -32,6 +30,7 @@ namespace Tai {
                 
                 Echo.Out("User story ID: " + config["storyId"], 5);
                 Echo.Out("Build ID: " + config["buildId"], 5);
+                Echo.Out("..........", 5);
 
                 string UserStoryURL = ApiWrapper.GetUserStoryReferenceUrl(config["storyId"]);
 
@@ -39,7 +38,7 @@ namespace Tai {
                 postJson["c_BuildID"] = config["buildId"];
 
                 ApiWrapper.UpdateStoryBuildId(postJson, UserStoryURL);
-                Echo.Out("..........", 5);
+                Echo.Out("success", 1);
             }else{
                 Echo.Out("you must have both a storyId and buildId in order to perform action: SetStoryBuildId", 1);
             }
@@ -47,7 +46,7 @@ namespace Tai {
 
         internal static void AutomaticallyFillTaskTime(TaiConfig config) {
 
-            config = PrepareConfigForTaskTimeAutoFill(config);
+            config = SetRequiredProperties(config, "targetUser", "projectId", "burndownDate", "hoursPerDay", "taskNames");
 
             var target_date = DateTime.Parse(config["burndownDate"]);
             var week_begin_date = target_date.AddDays(-(int)target_date.DayOfWeek);
@@ -82,7 +81,7 @@ namespace Tai {
                     
                     if(total_hours.Sum() < required_hours_this_week && daily_time_needed > 0 /**/ && i!=0 && i !=6) { //hard code ignore of sunday and saturaday for now
 
-                        Echo.Out(day_name + " FAILED inspection. Tai says, 'add some time motherfucker!'", 5);                        
+                        Echo.Out(day_name + " FAILED inspection.", 2);                        
 
                         int hoursToAdd = (int)Math.Ceiling(((double)daily_time_needed / (double)priority_chart.Count));
 
@@ -116,47 +115,65 @@ namespace Tai {
                         }
 
                     }else{
-                        Echo.Out(day_name + " PASSED inspection");
+                        Echo.Out(day_name + " PASSED inspection", 2);
                     }
                 }
 
                 ApiWrapper.SubmitTaskTimeValue(workload);
 
             }else {
-                Echo.Out("Autofilling is not needed since you have already filled out the minimum necessary time");
+                Echo.Out("Autofilling is not needed since you have already filled out the minimum necessary time", 2);
             }
         }
 
         internal static void CreateTaskForStory(TaiConfig config){
             
-            config = PrepareConfigForTaskCreation(config);
+            config = SetRequiredProperties(config, "targetUser", "storyId", "taskNames", "estimateHours", "taskState");
 
             JObject newTask = new JObject();
-            newTask["Name"] = config["taskNames"];//just create one for now. later iterate over these and create one for each name
-            newTask["Description"] = "";
+            newTask["Name"] = config["taskName"];//just create one for now. later iterate over these and create one for each name
+            newTask["Description"] = config["description"] ?? "";
+            newTask["Notes"] = config["notes"] ?? "";
             newTask["Owner"] = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
-            newTask["Estimate"] = "10";
-            newTask["State"] = "Defined";
+            newTask["Estimate"] = config["estimateHours"];
+            newTask["State"] = config["taskState"];
             newTask["TaskIndex"] = 1;
             newTask["WorkProduct"] = ApiWrapper.GetUserStory(config["storyId"]).Value<string>("ObjectID");
 
             Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 1);
-            Echo.Out(ApiWrapper.CreateNewTask(newTask).ToString(Newtonsoft.Json.Formatting.None));
-
-        }
-        private static TaiConfig PrepareConfigForTaskCreation(TaiConfig conf) {
-            conf["targetUser"] = conf["targetUser"] ?? conf["username"];
-            conf["storyId"] = conf["storyId"] ?? "US00000";
-            conf["taskNames"] = conf["taskNames"] ?? "new task for" + conf["targetUser"]; //have a flag that auto gens task name based on story requirements. rexgex split a sentence or something
-            return conf;
+            Echo.Out(ApiWrapper.CreateNewTask(newTask).ToString(Newtonsoft.Json.Formatting.None), 5);
         }
 
-        private static TaiConfig PrepareConfigForTaskTimeAutoFill(TaiConfig conf) {
-            conf["targetUser"] = conf["targetUser"] ?? conf["username"];
-            conf["projectId"] = conf["projectId"] ?? ApiWrapper.GetProjectId(conf["targetUser"]);
-            conf["burndownDate"] = conf["burndownDate"] ?? DateTime.Today.ToString("yyyy-MM-dd");
-            conf["hoursPerDay"] = conf["hoursPerDay"] ?? "8";
-            conf["taskNames"] = conf["taskNames"] ?? new string[]{"Administration", "Regression", "Iteration Planning", "Deployment Planning", "Environment Issue", "User Stories"}.ToJson();
+        internal static void GetCurrentIteration(TaiConfig config){
+            
+            config = SetRequiredProperties(config, "targetUser");
+
+            var project_id = ApiWrapper.GetProjectId(config["targetUser"]);
+
+            Echo.Out(ApiWrapper.GetIterationNumber(project_id).Trim(), 1);
+        }
+
+        #region Private Helpers
+        private static TaiConfig SetRequiredProperties(TaiConfig conf, params string[] requiredProperties) {
+            /* only some properties can be safely defaulted. this section belongs to those properties can be safely assumed */
+            var defaults = new Dictionary<string, Func<string, string>> () {
+                {"targetUser", val => { return val ?? conf["username"];}},
+                {"storyId", val => { return val ?? "US00000";}}, //todo: get most recent story by latest task update/modified
+                {"taskName", val => { return val ?? "new task";}},
+                {"estimateHours", val => { return val ?? "10";}},
+                {"taskState", val => { return val ?? "Defined";}},
+                {"projectId", val  => {return val ?? ApiWrapper.GetProjectId(conf["targetUser"]);}},
+                {"iterationNumber", val => {return val ?? ApiWrapper.GetIterationNumber(conf["projectId"]);}},
+                {"burndownDate", val => {return val ?? DateTime.Today.ToString("yyyy-MM-dd");}},
+                {"hoursPerDay", val => {return val ?? "8";}},
+                {"taskNames", val => {return val ?? "Administration,Regression,Iteration Planning,Deployment Planning,Environment Issue,User Stories".Split(',').ToJson();}},
+                {"emailGreeting", val => {return val ?? "Hi Boss";}},
+                {"emailSignature", val => {return val ?? "dev team";}},
+            };
+        
+            foreach(string property in requiredProperties){
+                conf[property] = defaults[property](conf[property]);}
+
             return conf;
         }
 
@@ -202,12 +219,6 @@ namespace Tai {
             }
 
             return priority_chart;
-        }
-
-        private static TaiConfig FixMissingEmailProperties(TaiConfig conf) {
-            conf["emailGreeting"] = conf["emailGreeting"] ?? "Hi Boss";
-            conf["emailSignature"] = conf["emailSignature"] ?? "-dev team";
-            return conf;
         }
 
 		private static string GetFarewell() {
@@ -312,7 +323,7 @@ namespace Tai {
 
         private static StringBuilder GenerateMicrosoftHtmlTabularReport(List<JToken> storys, TaiConfig config) {
 
-            config = FixMissingEmailProperties(config);
+            config = SetRequiredProperties(config, "emailGreeting", "emailSignature");
 
             var emailBody = new StringBuilder();
 
@@ -357,7 +368,7 @@ namespace Tai {
 
         private static StringBuilder GenerateGenerictHtmlTabularReport(List<JToken> storys, TaiConfig config) {
 
-            config = FixMissingEmailProperties(config);
+            config = SetRequiredProperties(config, "emailGreeting", "emailSignature");
 
             var emailBody = new StringBuilder();
 
@@ -399,5 +410,6 @@ namespace Tai {
 
             return emailBody;
         }
+        #endregion Private Helpers
     }
 }
