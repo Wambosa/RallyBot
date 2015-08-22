@@ -144,19 +144,10 @@ namespace Tai {
 
                 string iteration_id = iteration.Value<string>("ObjectID");
 
-                //TODO: get the full object with new learned flag. be sure to test out before commit
-                var query   = string.Format("HierarchicalRequirement?query=((Project.ObjectID = {0}) and (Iteration.ObjectID = {1}))", projectId, iteration_id);
-                var json    = GetJsonObject(BASE_URL + query);
+                var query = string.Format("HierarchicalRequirement?query=((Project.ObjectID = {0}) and (Iteration.ObjectID = {1}))&fetch=true", projectId, iteration_id);
+                var json = GetJsonObject(BASE_URL + query);
 
-                var results = json["QueryResult"]["Results"];
-
-                foreach (JToken partial_story in results) {
-
-                    string true_url = partial_story.Value<string>("_ref");
-                    JToken full_story = GetJsonObject(true_url);
-
-                    storys.Add(full_story["HierarchicalRequirement"]);
-                }
+                storys.AddRange(json["QueryResult"]["Results"]);
             }
 
             return storys;
@@ -215,6 +206,14 @@ namespace Tai {
             //check for errors .... meah
             string id = json["QueryResult"]["Results"][0].Value<string>("ObjectID");
 
+            return id;
+        }
+
+        public static string GetTargetUserHumanName(string userName) {
+            // https:// rally1.rallydev.com/slm/webservice/v2.0/user?query=(EmailAddress = bond@jbond.com)&fetch=true        
+            var query   = string.Format("user?query=(EmailAddress = {0})&fetch=true", userName);
+            var json    = GetJsonObject(BASE_URL + query);
+            string id = json["QueryResult"]["Results"][0].Value<string>("DisplayName");
             return id;
         }
 

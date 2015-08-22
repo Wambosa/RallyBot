@@ -10,7 +10,7 @@ namespace Tai {
 
         delegate void TaiMethod(TaiConfig config); //todo: delegate string TaiMethod(TaiConfig conf, OUTPUT_TYPE outType)
 
-        private enum TAI_COMMAND {NONE, ITERATION_REPORT, BURNDOWN, SET_BUILDID, CREATE_TASK, GET_ITERATION};
+        private enum TAI_COMMAND {NONE, ITERATION_REPORT, BURNDOWN, SET_BUILDID, CREATE_TASK, GET_ITERATION, GET_MY_STORYS, GET_TEAM_STORYS};
 
         private static TAI_COMMAND SESSION_ACTION = TAI_COMMAND.NONE;
 
@@ -20,7 +20,9 @@ namespace Tai {
             {TAI_COMMAND.BURNDOWN, CLIMethod.AutomaticallyFillTaskTime},
             {TAI_COMMAND.SET_BUILDID, CLIMethod.SetStoryBuildId},
             {TAI_COMMAND.CREATE_TASK, CLIMethod.CreateTaskForStory},
-            {TAI_COMMAND.GET_ITERATION, CLIMethod.GetCurrentIteration},
+            {TAI_COMMAND.GET_ITERATION, CLIMethod.GetCurrentIterationNumber},
+            {TAI_COMMAND.GET_MY_STORYS, CLIMethod.GetStorysForUser},
+            {TAI_COMMAND.GET_TEAM_STORYS, CLIMethod.GetIterationFormattedStoryIdsByTeam},
         };
 
         public static void Main(string[] args) {
@@ -33,6 +35,9 @@ namespace Tai {
                 { "set-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.SET_BUILDID;}},
                 { "create-task", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_TASK;}},
                 { "get-iteration", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_ITERATION;}},
+                { "get-my-storys", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_MY_STORYS;}},
+                { "get-iteration-storys-by-team", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORYS;}},
+
 
                 { "?|h|help", "", _ => Echo.HelpText()},
                 {"no-interaction", "", _ => {Grapple.isAllowingHumanInteraction = false;}},

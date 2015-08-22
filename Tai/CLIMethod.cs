@@ -144,13 +144,63 @@ namespace Tai {
             Echo.Out(ApiWrapper.CreateNewTask(newTask).ToString(Newtonsoft.Json.Formatting.None), 5);
         }
 
-        internal static void GetCurrentIteration(TaiConfig config){
+        internal static void GetCurrentIterationNumber(TaiConfig config){
             
             config = SetRequiredProperties(config, "targetUser");
 
             var project_id = ApiWrapper.GetProjectId(config["targetUser"]);
 
             Echo.Out(ApiWrapper.GetIterationNumber(project_id).Trim(), 1);
+        }
+
+        internal static void GetIterationFormattedStoryIdsByTeam(TaiConfig config){
+
+            config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber");
+
+            var iterations  = ApiWrapper.GetIteration(config["projectId"], config["iterationNumber"]);
+            var storys      = ApiWrapper.GetUserStories(config["projectId"], iterations);            
+
+            var sb = new StringBuilder();
+            foreach(JToken story in storys) {
+                sb.AppendFormat("{0},", story.Value<string>("FormattedID"));}
+
+            Echo.Out(sb.ToString().Substring(0, sb.Length-1), 1);
+        }
+
+        internal static void GetStorysForUser(TaiConfig config){
+            
+            config = SetRequiredProperties(config, "targetUser", "projectId", "humanName");
+
+            var iterations  = ApiWrapper.GetIteration(config["projectId"]);
+            var storys      = ApiWrapper.GetUserStories(config["projectId"], iterations);
+            var tasks       = ApiWrapper.GetTasks(storys);
+            storys          = AssignTaskMastersToStorys(storys, tasks, new string[]{config["humanName"]});
+            var sorted      = GetStorysSortedByProgrammer(storys);
+
+            if(sorted.ContainsKey(config["humanName"])){
+
+                var sb = new StringBuilder();
+                var count = 0;
+
+                foreach(JToken story in sorted[config["humanName"]]){
+                    count ++;
+                    sb.AppendFormat(@"
+{0}:            {1}
+justification:  {2}
+criteria:       {3}
+expert(s):      {4}
+link:           {5}
+                    ", story.Value<string>("FormattedID"),
+                    story.Value<string>("Name"),
+                    story.Value<string>("c_Benefit"),
+                    story.Value<string>("c_AcceptanceCriteria"),
+                    story.Value<string>("c_ResponsibleParty"),
+                    story.Value<string>("_ref"));
+                }
+ 
+                var header = string.Format("{0} has {1} stories assigned. \n", config["humanName"], count);
+                Echo.Out(header + sb.ToString(), 1);
+            }
         }
 
         #region Private Helpers
@@ -169,6 +219,7 @@ namespace Tai {
                 {"taskNames", val => {return val ?? "Administration,Regression,Iteration Planning,Deployment Planning,Environment Issue,User Stories".Split(',').ToJson();}},
                 {"emailGreeting", val => {return val ?? "Hi Boss";}},
                 {"emailSignature", val => {return val ?? "dev team";}},
+                {"humanName", val => {return val ?? ApiWrapper.GetTargetUserHumanName(conf["targetUser"]);}},
             };
         
             foreach(string property in requiredProperties){
@@ -278,8 +329,13 @@ namespace Tai {
 
                 string user_name = task["Owner"].Value<string>("_refObjectName");
 
-                if (!user_name.Contains(includeNames)) {
-                    continue;}
+                try{
+                    if (!user_name.Contains(includeNames)) {
+                        continue;}
+                }catch{
+                    continue;
+                }
+
 
                 string story_guid = task["WorkProduct"].Value<string>("_refObjectUUID");
 
@@ -319,6 +375,21 @@ namespace Tai {
             }
 
             return mutated_storys;
+        }
+
+        private static Dictionary<string, List<JToken>> GetStorysSortedByProgrammer(List<JToken> mutatedStorys) {
+
+            var sortedStories = new Dictionary<string, List<JToken>>();
+
+            foreach(var story in mutatedStorys){
+
+                if(sortedStories.ContainsKey(story.Value<string>("HeroOfTime"))){
+                    sortedStories[story.Value<string>("HeroOfTime")].Add(story);
+                }else{
+                    sortedStories.Add(story.Value<string>("HeroOfTime"), new List<JToken>(){{story}});}
+            }
+
+            return sortedStories;
         }
 
         private static StringBuilder GenerateMicrosoftHtmlTabularReport(List<JToken> storys, TaiConfig config) {
