@@ -10,7 +10,15 @@ namespace Tai {
 
         delegate void TaiMethod(TaiConfig config); //todo: delegate string TaiMethod(TaiConfig conf, OUTPUT_TYPE outType)
 
-        private enum TAI_COMMAND {NONE, ITERATION_REPORT, BURNDOWN, SET_BUILDID, CREATE_TASK, GET_ITERATION, GET_MY_STORYS, GET_TEAM_STORYS};
+        private enum TAI_COMMAND {NONE, 
+            ITERATION_REPORT, 
+            BURNDOWN, 
+            SET_BUILDID, 
+            CREATE_TASK, 
+            GET_ITERATION, 
+            GET_MY_STORYS, 
+            GET_TEAM_STORYS, 
+            GET_TEAM_STORY_URLS};
 
         private static TAI_COMMAND SESSION_ACTION = TAI_COMMAND.NONE;
 
@@ -22,7 +30,9 @@ namespace Tai {
             {TAI_COMMAND.CREATE_TASK, CLIMethod.CreateTaskForStory},
             {TAI_COMMAND.GET_ITERATION, CLIMethod.GetCurrentIterationNumber},
             {TAI_COMMAND.GET_MY_STORYS, CLIMethod.GetStorysForUser},
-            {TAI_COMMAND.GET_TEAM_STORYS, CLIMethod.GetIterationFormattedStoryIdsByTeam},
+            {TAI_COMMAND.GET_TEAM_STORYS, CLIMethod.GetTeamStoryIds},
+            {TAI_COMMAND.GET_TEAM_STORY_URLS, CLIMethod.GetTeamStoryUrls},
+
         };
 
         public static void Main(string[] args) {
@@ -36,7 +46,9 @@ namespace Tai {
                 { "create-task", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_TASK;}},
                 { "get-iteration", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_ITERATION;}},
                 { "get-my-storys", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_MY_STORYS;}},
-                { "get-iteration-storys-by-team", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORYS;}},
+                { "get-team-storys", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORYS;}},
+                { "get-team-story-urls", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORY_URLS;}},
+
 
 
                 { "?|h|help", "", _ => Echo.HelpText()},
@@ -65,7 +77,8 @@ namespace Tai {
                 {"status-report-names=", "", names => {config["statusReportNames"] = names.Split(',').ToJson();}},
                 {"task-names=", "", names => {config["taskNames"] = names.Split(',').ToJson();}},
                 {"attachment=|attachments=", "", files => {config["attachments"] = files.Split(',').ToJson();}}, //can be the path or raw file, but all types must be the same for this up and comming version
-                
+
+                {"d=|delimiter=", "", sep => {Echo.DELIMITER = sep;}},
                 {"l=|log-level=", "", noise => {Echo.LOG_LEVEL = Convert.ToByte(noise);}},
                                 
                 /*

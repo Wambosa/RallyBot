@@ -153,7 +153,7 @@ namespace Tai {
             Echo.Out(ApiWrapper.GetIterationNumber(project_id).Trim(), 1);
         }
 
-        internal static void GetIterationFormattedStoryIdsByTeam(TaiConfig config){
+        internal static void GetTeamStoryIds(TaiConfig config){
 
             config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber");
 
@@ -162,9 +162,23 @@ namespace Tai {
 
             var sb = new StringBuilder();
             foreach(JToken story in storys) {
-                sb.AppendFormat("{0},", story.Value<string>("FormattedID"));}
+                sb.AppendFormat("{0}{1}", story.Value<string>("FormattedID"), Echo.DELIMITER);}
 
-            Echo.Out(sb.ToString().Substring(0, sb.Length-1), 1);
+            Echo.Out(sb.ToString().Substring(0, sb.Length-Echo.DELIMITER.Length), 1);
+        }
+
+        internal static void GetTeamStoryUrls(TaiConfig config){
+
+            config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber");
+
+            var iterations  = ApiWrapper.GetIteration(config["projectId"], config["iterationNumber"]);
+            var storys      = ApiWrapper.GetUserStories(config["projectId"], iterations);            
+
+            var sb = new StringBuilder();
+            foreach(JToken story in storys) {
+                sb.AppendFormat("{0}{1}", story.Value<string>("_ref"), Echo.DELIMITER);}
+
+            Echo.Out(sb.ToString().Substring(0, sb.Length-Echo.DELIMITER.Length), 1);
         }
 
         internal static void GetStorysForUser(TaiConfig config){
@@ -329,12 +343,8 @@ link:           {5}
 
                 string user_name = task["Owner"].Value<string>("_refObjectName");
 
-                try{
-                    if (!user_name.Contains(includeNames)) {
-                        continue;}
-                }catch{
-                    continue;
-                }
+                if (!user_name.Contains(includeNames)) {
+                    continue;}
 
 
                 string story_guid = task["WorkProduct"].Value<string>("_refObjectUUID");

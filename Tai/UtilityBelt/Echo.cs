@@ -9,6 +9,7 @@ namespace Tai.UtilityBelt {
     internal static class Echo {
 
         internal static Byte LOG_LEVEL = 10;
+        internal static string DELIMITER = ","; //todo: honor everywhere a cli report is generated (or other places that make sense)
 
         internal static void TaskReport(List<Task> tasks, DateTime weekToReportOn){
         
