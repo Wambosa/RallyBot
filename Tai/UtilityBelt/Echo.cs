@@ -142,7 +142,7 @@ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ dp $
                 designed to lessen the burden of admin tasks
 
                 todo: write a better help file
-            ", 1);
+            ", 2);
 		}
 
 		internal static void ErrorReport(string[] badInput) {

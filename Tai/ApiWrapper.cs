@@ -343,7 +343,7 @@ namespace Tai {
             json["Task"]["TaskIndex"] = newTask.Value<string>("TaskIndex"); // just default to 1 ?
             json["Task"]["WorkProduct"] = newTask.Value<string>("WorkProduct");
 
-            var response = HttpService.PostJson(url, json.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH);
+            var response = JToken.Parse(HttpService.PostJson(url, json.ToString(Newtonsoft.Json.Formatting.None), MakeCredentials(new Uri(url)), CACHED_AUTH));
 
             // foreach json["Task"]["Attachments"], create the attachment object AFTER succesful task creation. because i will need the ref url to associate the attachments
 

@@ -140,8 +140,11 @@ namespace Tai {
             newTask["TaskIndex"] = 1;
             newTask["WorkProduct"] = ApiWrapper.GetUserStory(config["storyId"]).Value<string>("ObjectID");
 
-            Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 1);
-            Echo.Out(ApiWrapper.CreateNewTask(newTask).ToString(Newtonsoft.Json.Formatting.None), 5);
+            JToken createResult = ApiWrapper.CreateNewTask(newTask);
+
+            Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 3);
+            Echo.Out(createResult.ToString(Newtonsoft.Json.Formatting.None), 9);
+            Echo.Out((string)createResult["CreateResult"]["Object"]["ObjectID"], 1);
         }
 
         internal static void GetCurrentIterationNumber(TaiConfig config){
