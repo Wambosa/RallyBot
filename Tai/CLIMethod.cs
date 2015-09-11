@@ -10,7 +10,7 @@ namespace Tai {
 
         internal static void WriteStatusReportForAnIteration(TaiConfig config) {
 
-            config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber");
+            config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber", "statusReportNames");
 
             var team        = ApiWrapper.GetTeamMembers(config["projectId"]);
             var iterations  = ApiWrapper.GetIteration(config["projectId"], config["iterationNumber"]);
@@ -237,6 +237,20 @@ link:           {5}
                 {"emailGreeting", val => {return val ?? "Hi Boss";}},
                 {"emailSignature", val => {return val ?? "dev team";}},
                 {"humanName", val => {return val ?? ApiWrapper.GetTargetUserHumanName(conf["targetUser"]);}},
+                {"statusReportNames", val => {
+
+                    if(val != null) {
+                        return val;}
+
+                    var teams = ApiWrapper.GetTeamMembers(conf["projectId"]);
+
+                    List<string> statusReportNames = new List<string>();
+                    foreach(JToken member in teams){
+                        statusReportNames.Add(member.Value<string>("DisplayName"));}
+
+                    return statusReportNames.ToArray().ToJson();
+                }}            
+
             };
         
             foreach(string property in requiredProperties){
