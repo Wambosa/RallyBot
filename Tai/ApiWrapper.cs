@@ -76,38 +76,63 @@ namespace Tai {
         }
 
         public static string GetIterationNumber(string projectId) {
-            // assumes the latest iteration
-            // https:// rally1.rallydev.com/slm/webservice/v2.0/Project/15188699182/Iterations?order=EndDate&pagesize=200
+            // https:// rally1.rallydev.com/slm/webservice/v2.0/Project/15188699182/Iterations?order=EndDate desc&pagesize=10
 
-            var query       = string.Format("Project/{0}/Iterations?order=EndDate desc&pagesize=1", projectId);
+            var query       = string.Format("Project/{0}/Iterations?order=EndDate desc&pagesize=10", projectId);
             var json        = GetJsonObject(BASE_URL + query);
-            var iterations  = new List<JToken>();
 
-            var most_recent = json["QueryResult"]["Results"].First;
-            var assumed_iteration_num = Regex.Match(most_recent.Value<string>("Name"), @"\s\d\d").Value;
+            var mostLikelyOption = json["QueryResult"]["Results"].First;
 
-            return assumed_iteration_num;//this returns with padding
+			foreach(var iteration in json["QueryResult"]["Results"]) {
+				
+				var now = DateTime.Now;
+
+				var startDate = iteration.Value<DateTime>("StartDate");
+				var endDate = iteration.Value<DateTime>("EndDate");
+
+				if(now >= startDate && now <= endDate) {
+					mostLikelyOption = iteration;
+					break;
+				}
+			}
+
+            string assumedIterationNum = Regex.Match(mostLikelyOption.Value<string>("Name"), @"((?i)iteration|(?i)itr)\s\d\d").Value;
+			string trimmedNumber = Regex.Match(assumedIterationNum, @"\d\d").Value;
+
+            return trimmedNumber;
         }
 
         public static List<JToken> GetIteration(string projectId) {
             // assumes the latest iteration
             // https:// rally1.rallydev.com/slm/webservice/v2.0/Project/15188699182/Iterations?order=EndDate&pagesize=200
 
-            var query       = string.Format("Project/{0}/Iterations?order=EndDate desc&pagesize=1", projectId);
-            var json        = GetJsonObject(BASE_URL + query);
-            var iterations  = new List<JToken>();
+            var query = string.Format("Project/{0}/Iterations?order=EndDate desc&pagesize=10", projectId);
+            var json = GetJsonObject(BASE_URL + query);
+            var mostLikelyOption = json["QueryResult"]["Results"].First;
 
-            var most_recent = json["QueryResult"]["Results"].First;
-            var assumed_iteration_num = Regex.Match(most_recent.Value<string>("Name"), @"\s\d\d").Value;
+			foreach(var iteration in json["QueryResult"]["Results"]) {
+				
+				var now = DateTime.Now;
 
-            return GetIteration(projectId, assumed_iteration_num);
+				var startDate = iteration.Value<DateTime>("StartDate");
+				var endDate = iteration.Value<DateTime>("EndDate");
+
+				if(now >= startDate && now <= endDate) {
+					mostLikelyOption = iteration;
+					break;
+				}
+			}
+
+			string assumedIterationNum = Regex.Match(mostLikelyOption.Value<string>("Name"), @"((?i)iteration|(?i)itr)\s\d\d").Value;
+
+            return GetIteration(projectId, assumedIterationNum);
         }
 
         public static List<JToken> GetIteration(string projectId, string iterationNum) {
 
             //https:// rally1.rallydev.com/slm/webservice/v2.0/Project/15188699182/Iterations?query=(Name%20contains%20%2292%22)
 
-            var query       = string.Format("Project/{0}/Iterations?query=(Name contains {1})", projectId, iterationNum);
+            var query       = string.Format("Project/{0}/Iterations?query=(Name contains \"{1}\")", projectId, iterationNum);
             var json        = GetJsonObject(BASE_URL + query);
             var iterations  = new List<JToken>();
 

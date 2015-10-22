@@ -10,29 +10,36 @@ namespace Tai {
 
         delegate void TaiMethod(TaiConfig config); //todo: delegate string TaiMethod(TaiConfig conf, OUTPUT_TYPE outType)
 
-        private enum TAI_COMMAND {NONE, 
-            ITERATION_REPORT, 
+        private enum TAI_COMMAND {
+			NONE, 
+            GET_ITERATION_REPORT, 
             BURNDOWN, 
-            SET_BUILDID, 
+            UPDATE_STORY_BUILDID, 
             CREATE_TASK, 
+			CREATE_MY_STORY_TASKS,
+			CREATE_QA_BOILERPLATE,
+			CREATE_DEV_LEAD_BOILERPLATE,
             GET_ITERATION, 
             GET_MY_STORYS, 
             GET_TEAM_STORYS, 
-            GET_TEAM_STORY_URLS};
+            GET_TEAM_STORY_URLS
+		};
 
         private static TAI_COMMAND SESSION_ACTION = TAI_COMMAND.NONE;
 
         private static Dictionary<TAI_COMMAND, TaiMethod> TaiTakeCareOfThis = new Dictionary<TAI_COMMAND, TaiMethod>() {
-            {TAI_COMMAND.NONE, _ => {Echo.HelpText();}},
-            {TAI_COMMAND.ITERATION_REPORT, CLIMethod.WriteStatusReportForAnIteration},
+            {TAI_COMMAND.NONE, _ => {}},
+            {TAI_COMMAND.GET_ITERATION_REPORT, CLIMethod.WriteStatusReportForAnIteration},
             {TAI_COMMAND.BURNDOWN, CLIMethod.AutomaticallyFillTaskTime},
-            {TAI_COMMAND.SET_BUILDID, CLIMethod.SetStoryBuildId},
+            {TAI_COMMAND.UPDATE_STORY_BUILDID, CLIMethod.SetStoryBuildId},
             {TAI_COMMAND.CREATE_TASK, CLIMethod.CreateTaskForStory},
+			{TAI_COMMAND.CREATE_MY_STORY_TASKS, CLIMethod.CreateMyStoryTasks},
+			{TAI_COMMAND.CREATE_QA_BOILERPLATE, CLIMethod.CreateQABoilerplate},
+			{TAI_COMMAND.CREATE_DEV_LEAD_BOILERPLATE, CLIMethod.CreateDevLeadBoilerplate},
             {TAI_COMMAND.GET_ITERATION, CLIMethod.GetCurrentIterationNumber},
             {TAI_COMMAND.GET_MY_STORYS, CLIMethod.GetStorysForUser},
             {TAI_COMMAND.GET_TEAM_STORYS, CLIMethod.GetTeamStoryIds},
             {TAI_COMMAND.GET_TEAM_STORY_URLS, CLIMethod.GetTeamStoryUrls},
-
         };
 
         public static void Main(string[] args) {
@@ -40,18 +47,19 @@ namespace Tai {
             TaiConfig config = new TaiConfig(@Grapple.GetThisFolder() + "tai.conf");
 
             var options = new OptionSet() {
-                { "iteration-report", "", _ => {SESSION_ACTION = TAI_COMMAND.ITERATION_REPORT;}},
-                { "auto-fill-time", "", _ => {SESSION_ACTION = TAI_COMMAND.BURNDOWN;}},
-                { "set-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.SET_BUILDID;}},
-                { "create-task", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_TASK;}},
+                { "get-iteration-report", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_ITERATION_REPORT;}},
+                { "update-rally-time", "", _ => {SESSION_ACTION = TAI_COMMAND.BURNDOWN;}},
+                { "update-story-build", "", _ => {SESSION_ACTION = TAI_COMMAND.UPDATE_STORY_BUILDID;}},
+                { "insert-task", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_TASK;}},
+				{ "insert-my-tasks-for-story", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_MY_STORY_TASKS;}},
+				{ "insert-dev-lead-boilerplate", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_DEV_LEAD_BOILERPLATE;}},
+				{ "insert-qa-boilerplate", "", _ => {SESSION_ACTION = TAI_COMMAND.CREATE_QA_BOILERPLATE;}},
                 { "get-iteration", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_ITERATION;}},
                 { "get-my-storys", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_MY_STORYS;}},
                 { "get-team-storys", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORYS;}},
                 { "get-team-story-urls", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORY_URLS;}},
 
-
-
-                { "?|h|help", "", _ => Echo.HelpText()},
+                { "?|h|help", "", _ => {SESSION_ACTION = TAI_COMMAND.NONE;}},
                 {"no-interaction", "", _ => {Grapple.isAllowingHumanInteraction = false;}},
                 
                 {"username=", "", user => {config["username"] = user;}},
@@ -83,7 +91,6 @@ namespace Tai {
                                 
                 /*
                 later...
-                get-stories
                 get-tasks
 
                 team-name=
@@ -94,13 +101,13 @@ namespace Tai {
 
             var badInput = options.Parse(args);
 
-            if(badInput.Count > 0) {
+            Echo.WelcomeText();
+
+            if(badInput.Count > 0 || SESSION_ACTION == TAI_COMMAND.NONE) {
                 Echo.ErrorReport(badInput.ToArray());
                 Echo.OffensiveGesture();
-                Echo.HelpText();
+                Echo.HelpText(options);
             }
-
-            Echo.WelcomeText();
 
             config = Grapple.TryGetCredentialsManually(config);
             ApiWrapper.Initialize(config);

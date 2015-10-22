@@ -10,6 +10,7 @@ namespace Tai.UtilityBelt {
 
         internal static Byte LOG_LEVEL = 10;
         internal static string DELIMITER = ","; //todo: honor everywhere a cli report is generated (or other places that make sense)
+		internal static string NEWLINE = "\n";
 
         internal static void TaskReport(List<Task> tasks, DateTime weekToReportOn){
         
@@ -136,13 +137,22 @@ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ dp $
 			Out(@"┌∩┐(>_<)┌∩┐", 5);
 		}
 
-		internal static void HelpText() {
+		internal static void HelpText(Mono.Options.OptionSet options) {
+			
 			Out(@"
                 Tai
                 designed to lessen the burden of admin tasks
-
-                todo: write a better help file
             ", 2);
+
+			foreach(var option in options) {
+				Out(string.Format("{0}{1}{2}{3}{4}", 
+					option.Prototype,
+					NEWLINE,
+					option.Description,
+					NEWLINE, 
+					NEWLINE),
+					2);
+			}
 		}
 
 		internal static void ErrorReport(string[] badInput) {

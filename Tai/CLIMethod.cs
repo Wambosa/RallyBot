@@ -4,6 +4,7 @@ using Tai.Extensions;
 using Tai.UtilityBelt;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Tai {
     internal static class CLIMethod {
@@ -126,9 +127,9 @@ namespace Tai {
             }
         }
 
-        internal static void CreateTaskForStory(TaiConfig config){
+        internal static void CreateTaskForStory(TaiConfig config) {
             
-            config = SetRequiredProperties(config, "targetUser", "storyId", "taskNames", "estimateHours", "taskState");
+            config = SetRequiredProperties(config, "targetUser", "storyId", "taskName", "estimateHours", "taskState");
 
             JObject newTask = new JObject();
             newTask["Name"] = config["taskName"];//just create one for now. later iterate over these and create one for each name
@@ -147,13 +148,110 @@ namespace Tai {
             Echo.Out((string)createResult["CreateResult"]["Object"]["ObjectID"], 1);
         }
 
-        internal static void GetCurrentIterationNumber(TaiConfig config){
+        internal static void CreateMyStoryTasks(TaiConfig config) {
+            
+            config = SetRequiredProperties(config, "targetUser", "storyId", "estimateHours", "taskState");
+
+			JToken story = ApiWrapper.GetUserStory(config["storyId"]);
+
+			foreach(string logicalName in GetLogicalTaskNamesForStory(story.Value<string>("Description"))) {
+				JObject newTask = new JObject();
+				newTask["Name"] = logicalName;
+				newTask["Description"] = config["description"] ?? "";
+				newTask["Notes"] = config["notes"] ?? "";
+				newTask["Owner"] = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+				newTask["Estimate"] = config["estimateHours"];
+				newTask["State"] = config["taskState"];
+				newTask["TaskIndex"] = 1;
+				newTask["WorkProduct"] = story.Value<string>("ObjectID");
+
+				JToken createResult = ApiWrapper.CreateNewTask(newTask);
+
+				Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 3);
+				Echo.Out(createResult.ToString(Newtonsoft.Json.Formatting.None), 9);
+				Echo.Out((string)createResult["CreateResult"]["Object"]["ObjectID"], 1);
+			}
+        }
+
+        internal static void CreateQABoilerplate(TaiConfig config) {
+            
+            config = SetRequiredProperties(config, "targetUser", "iterationNumber", "taskState");
+
+			string projectId = ApiWrapper.GetProjectId(config["targetUser"]);
+
+			List<JToken> iterations = ApiWrapper.GetIteration(projectId);
+
+			List<JToken> storys = ApiWrapper.GetUserStories(projectId, iterations);
+
+			string[] qaTaskNames = new string[] {
+				"QA User Story Analysis",
+				"QA Test Case creation",
+				"QA Test Case Execution",
+			};
+
+			foreach(JToken story in storys) {				
+				foreach(string logicalName in qaTaskNames) {
+					JObject newTask = new JObject();
+					newTask["Name"] = logicalName;
+					newTask["Description"] = config["description"] ?? "";
+					newTask["Notes"] = config["notes"] ?? "";
+					newTask["Owner"] = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+					newTask["Estimate"] = 1; //hardcode 1 on purpose
+					newTask["State"] = config["taskState"];
+					newTask["TaskIndex"] = 1;
+					newTask["WorkProduct"] = story.Value<string>("ObjectID");
+
+					JToken createResult = ApiWrapper.CreateNewTask(newTask);
+
+					Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 3);
+					Echo.Out(createResult.ToString(Newtonsoft.Json.Formatting.None), 9);
+					Echo.Out((string)createResult["CreateResult"]["Object"]["ObjectID"], 1);
+				}
+			}
+        }
+
+		internal static void CreateDevLeadBoilerplate(TaiConfig config) {
+            
+            config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber", "taskState");
+
+			string projectId = ApiWrapper.GetProjectId(config["targetUser"]);
+
+			List<JToken> iterations = ApiWrapper.GetIteration(config["projectId"]);
+
+			List<JToken> storys = ApiWrapper.GetUserStories(config["projectId"], iterations);
+
+			string[] devTaskNames = new string[] {
+				 (new Random().Next(0, 2) == 0 ? "Code Review" : "Harsh Code Review"),
+			};
+
+			foreach(JToken story in storys) {				
+				foreach(string logicalName in devTaskNames) {
+					JObject newTask = new JObject();
+					newTask["Name"] = logicalName;
+					newTask["Description"] = config["description"] ?? "";
+					newTask["Notes"] = config["notes"] ?? "";
+					newTask["Owner"] = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+					newTask["Estimate"] = 1;
+					newTask["State"] = config["taskState"];
+					newTask["TaskIndex"] = 1;
+					newTask["WorkProduct"] = story.Value<string>("ObjectID");
+
+					JToken createResult = ApiWrapper.CreateNewTask(newTask);
+
+					Echo.Out(newTask.ToString(Newtonsoft.Json.Formatting.Indented), 3);
+					Echo.Out(createResult.ToString(Newtonsoft.Json.Formatting.None), 9);
+					Echo.Out((string)createResult["CreateResult"]["Object"]["ObjectID"], 1);
+				}
+			}
+        }
+
+        internal static void GetCurrentIterationNumber(TaiConfig config) {
             
             config = SetRequiredProperties(config, "targetUser");
 
             var project_id = ApiWrapper.GetProjectId(config["targetUser"]);
 
-            Echo.Out(ApiWrapper.GetIterationNumber(project_id).Trim(), 1);
+            Echo.Out(ApiWrapper.GetIterationNumber(project_id), 1);
         }
 
         internal static void GetTeamStoryIds(TaiConfig config){
@@ -253,11 +351,22 @@ link:           {5}
 
             };
         
-            foreach(string property in requiredProperties){
+            foreach(string property in requiredProperties) {
                 conf[property] = defaults[property](conf[property]);}
 
             return conf;
         }
+
+		private static string[] GetLogicalTaskNamesForStory(string justification) {
+
+			string mainText = Regex.Match(justification, @"(?<=I\swant\s)((.*)(?=so\b)|(?=even\b))").Value;
+
+			return new string[] {
+				string.Format("figure out how {0}", mainText),
+				string.Format("build {0}", mainText),
+				string.Format("test {0}", mainText),
+			};
+		}
 
         private static void CreateEmptyTimeCardForTasks(List<Task> tasks, TaiConfig config){
 
