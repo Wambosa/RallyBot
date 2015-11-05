@@ -224,22 +224,41 @@ namespace Tai {
         }
 
         public static string GetTargetUserObjectId(string userName) {
+			//WARNING: rally uses case sensitive string matching... -_-
             // https:// rally1.rallydev.com/slm/webservice/v2.0/user?query=(EmailAddress = bond@jbond.com)&fetch=true        
-            var query   = string.Format("user?query=(EmailAddress = {0})&fetch=true", userName);
+            var query   = string.Format("user?query=(EmailAddress contains {0})&fetch=true", userName);
             var json    = GetJsonObject(BASE_URL + query);
 
-            //check for errors .... meah
-            string id = json["QueryResult"]["Results"][0].Value<string>("ObjectID");
+			string id	= string.Empty;
+
+			foreach(JToken user in json["QueryResult"]["Results"]) {
+
+				if(user.Value<string>("EmailAddress").ToLower() == userName.ToLower()) {
+					id = user.Value<string>("ObjectID");
+					break;
+				}
+			}
 
             return id;
         }
 
         public static string GetTargetUserHumanName(string userName) {
+			//WARNING: rally uses case sensitive string matching... -_-
             // https:// rally1.rallydev.com/slm/webservice/v2.0/user?query=(EmailAddress = bond@jbond.com)&fetch=true        
-            var query   = string.Format("user?query=(EmailAddress = {0})&fetch=true", userName);
+            var query   = string.Format("user?query=(EmailAddress contains {0})&fetch=true", userName);
             var json    = GetJsonObject(BASE_URL + query);
-            string id = json["QueryResult"]["Results"][0].Value<string>("DisplayName");
-            return id;
+
+			string name = string.Empty;
+
+			foreach(JToken user in json["QueryResult"]["Results"]) {
+
+				if(user.Value<string>("EmailAddress").ToLower() == userName.ToLower()) {
+					name = user.Value<string>("DisplayName");
+					break;
+				}
+			}
+
+            return name;
         }
 
         public static string GetSpecificTeamMemberObjectId(List<JToken> myTeam, string targetUsername) {

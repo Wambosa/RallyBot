@@ -175,13 +175,11 @@ namespace Tai {
 
         internal static void CreateQABoilerplate(TaiConfig config) {
             
-            config = SetRequiredProperties(config, "targetUser", "iterationNumber", "taskState");
+            config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber", "taskState");
 
-			string projectId = ApiWrapper.GetProjectId(config["targetUser"]);
+			List<JToken> iterations = ApiWrapper.GetIteration(config["projectId"]);
 
-			List<JToken> iterations = ApiWrapper.GetIteration(projectId);
-
-			List<JToken> storys = ApiWrapper.GetUserStories(projectId, iterations);
+			List<JToken> storys = ApiWrapper.GetUserStories(config["projectId"], iterations);
 
 			string[] qaTaskNames = new string[] {
 				"QA User Story Analysis",
@@ -213,8 +211,6 @@ namespace Tai {
 		internal static void CreateDevLeadBoilerplate(TaiConfig config) {
             
             config = SetRequiredProperties(config, "targetUser", "projectId", "iterationNumber", "taskState");
-
-			string projectId = ApiWrapper.GetProjectId(config["targetUser"]);
 
 			List<JToken> iterations = ApiWrapper.GetIteration(config["projectId"]);
 
@@ -320,22 +316,23 @@ link:           {5}
 
         #region Private Helpers
         private static TaiConfig SetRequiredProperties(TaiConfig conf, params string[] requiredProperties) {
-            /* only some properties can be safely defaulted. this section belongs to those properties can be safely assumed */
+            /* only some properties can be safely defaulted. this section belongs to those properties can be safely assumed*/
+
             var defaults = new Dictionary<string, Func<string, string>> () {
-                {"targetUser", val => { return val ?? conf["username"];}},
-                {"storyId", val => { return val ?? "US00000";}}, //todo: get most recent story by latest task update/modified
-                {"taskName", val => { return val ?? "new task";}},
-                {"estimateHours", val => { return val ?? "10";}},
-                {"taskState", val => { return val ?? "Defined";}},
-                {"projectId", val  => {return val ?? ApiWrapper.GetProjectId(conf["targetUser"]);}},
-                {"iterationNumber", val => {return val ?? ApiWrapper.GetIterationNumber(conf["projectId"]);}},
-                {"burndownDate", val => {return val ?? DateTime.Today.ToString("yyyy-MM-dd");}},
-                {"hoursPerDay", val => {return val ?? "8";}},
-                {"taskNames", val => {return val ?? "Administration,Regression,Iteration Planning,Deployment Planning,Environment Issue,User Stories".Split(',').ToJson();}},
-                {"emailGreeting", val => {return val ?? "Hi Boss";}},
-                {"emailSignature", val => {return val ?? "dev team";}},
-                {"humanName", val => {return val ?? ApiWrapper.GetTargetUserHumanName(conf["targetUser"]);}},
-                {"statusReportNames", val => {
+                {"targetUser",			val => { return val ?? conf["username"];}},
+                {"storyId",				val => { return val ?? "US00000";}}, //todo: get most recent story by latest task update/modified
+                {"taskName",			val => { return val ?? "new task";}},
+                {"estimateHours",		val => { return val ?? "10";}},
+                {"taskState",			val => { return val ?? "Defined";}},
+                {"projectId",			val  => {return val ?? ApiWrapper.GetProjectId(conf["targetUser"]);}},
+                {"iterationNumber",		val => {return val ?? ApiWrapper.GetIterationNumber(conf["projectId"]);}},
+                {"burndownDate",		val => {return val ?? DateTime.Today.ToString("yyyy-MM-dd");}},
+                {"hoursPerDay",			val => {return val ?? "8";}},
+                {"taskNames",			val => {return val ?? "Administration,Regression,Iteration Planning,Deployment Planning,Environment Issue,User Stories".Split(',').ToJson();}},
+                {"emailGreeting",		val => {return val ?? "Hi Boss";}},
+                {"emailSignature",		val => {return val ?? "dev team";}},
+                {"humanName",			val => {return val ?? ApiWrapper.GetTargetUserHumanName(conf["targetUser"]);}},
+                {"statusReportNames",	val => {
 
                     if(val != null) {
                         return val;}
