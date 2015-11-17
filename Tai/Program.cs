@@ -12,17 +12,18 @@ namespace Tai {
 
         private enum TAI_COMMAND {
 			NONE, 
-            GET_ITERATION_REPORT, 
-            BURNDOWN, 
-            UPDATE_STORY_BUILDID, 
-            INSERT_TASK, 
+			GET_ITERATION_REPORT, 
+			BURNDOWN, 
+			UPDATE_STORY_BUILDID, 
+			INSERT_TASK, 
 			INSERT_MY_STORY_TASKS,
 			INSERT_QA_BOILERPLATE,
 			INSERT_DEV_LEAD_BOILERPLATE,
-            GET_ITERATION, 
-            GET_MY_STORYS, 
-            GET_TEAM_STORYS, 
-            GET_TEAM_STORY_URLS
+			GET_ITERATION, 
+			GET_MY_STORYS,
+ 			GET_MY_TASKS, 
+			GET_TEAM_STORYS, 
+			GET_TEAM_STORY_URLS
 		};
 
         private static TAI_COMMAND SESSION_ACTION = TAI_COMMAND.NONE;
@@ -56,6 +57,7 @@ namespace Tai {
 			{ "insert-qa-boilerplate", "", _ => {SESSION_ACTION = TAI_COMMAND.INSERT_QA_BOILERPLATE;}},
 			{ "get-iteration", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_ITERATION;}},
 			{ "get-my-storys", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_MY_STORYS;}},
+			{ "get-my-tasks", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_MY_TASKS;}},
 			{ "get-team-storys", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORYS;}},
 			{ "get-team-story-urls", "", _ => {SESSION_ACTION = TAI_COMMAND.GET_TEAM_STORY_URLS;}},
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using Tai.Extensions;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -195,17 +196,21 @@ namespace Tai {
         }
 
         public static List<Task> GetTasks(string userId, DateTime weekStart) {
-            //https:// rally1.rallydev.com/slm/webservice/v2.0/task?query=(Owner.ObjectId%20=%2033470899520)&fetch=true
-
+            //https:// rally1.rallydev.com/slm/webservice/v2.0/task?query=((Owner.ObjectId%20=%2033470899520) AND (CreationDate > 2015-05-01T22:32:58.479Z))&fetch=true
+			//YYYY-MM-DDThh:mm:ss.nnnZ
             List<Task> tasks = new List<Task>();
 
-            var query = string.Format("task?query=(Owner.ObjectId = {0})&pagesize=200&fetch=true", userId);
+            var query = string.Format("task?query=((Owner.ObjectId = {0}) AND (CreationDate > {1}))&pagesize=200&fetch=true",
+				userId,
+				weekStart.GetRallyDateString()
+			);
+
             var json = GetJsonObject(BASE_URL + query);
             var results = json["QueryResult"]["Results"];
 
             foreach(JToken task in results) {
 
-                var task_creation = Convert.ToDateTime(task.Value<string>("CreationDate"));
+                var task_creation = task.Value<DateTime>("CreationDate");
 
                 //may also need to confirm state at some point
                 if(task_creation.Date >= weekStart.Date) {

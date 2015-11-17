@@ -282,35 +282,52 @@ namespace Tai {
             
             config = SetRequiredProperties(config, "targetUser", "projectId", "humanName");
 
+			var humanName	= config["humanName"];
             var iterations  = ApiWrapper.GetIteration(config["projectId"]);
             var storys      = ApiWrapper.GetUserStories(config["projectId"], iterations);
             var tasks       = ApiWrapper.GetTasks(storys);
-            storys          = AssignTaskMastersToStorys(storys, tasks, new string[]{config["humanName"]});
+            storys          = AssignTaskMastersToStorys(storys, tasks, new string[]{humanName});
             var sorted      = GetStorysSortedByProgrammer(storys);
 
-            if(sorted.ContainsKey(config["humanName"])){
+            if(sorted.ContainsKey(humanName)){
 
                 var sb = new StringBuilder();
-                var count = 0;
+                
+				sb.AppendFormat("{0} has {1} stories assigned. \n", 
+					humanName, 
+					sorted[humanName].Count
+				);
 
-                foreach(JToken story in sorted[config["humanName"]]){
-                    count ++;
+                foreach(JToken story in sorted[humanName]) {
+
+					var cleanedCriteria = story.Value<string>("c_AcceptanceCriteria");
+					cleanedCriteria = Regex.Replace(cleanedCriteria, @"(<br />)", "\n");
+					cleanedCriteria = Regex.Replace(cleanedCriteria, @"(<div>)|(</\w+>)","");
+					cleanedCriteria = Regex.Replace(cleanedCriteria, @"(<ul><li>)|(<ol><li>)|(<li>)", "\n-");
+
                     sb.AppendFormat(@"
-{0}:            {1}
-justification:  {2}
-criteria:       {3}
-expert(s):      {4}
-link:           {5}
-                    ", story.Value<string>("FormattedID"),
+_________________________________________________________________________
+|{0}:        {1}
+|
+|justification:  {2}
+|
+|criteria:       {3}
+|
+|expert(s):      {4}
+|
+|link:           {5}
+__________________________________________________________________________
+
+",
+					story.Value<string>("FormattedID"),
                     story.Value<string>("Name"),
                     story.Value<string>("c_Benefit"),
-                    story.Value<string>("c_AcceptanceCriteria"),
+                    cleanedCriteria,
                     story.Value<string>("c_ResponsibleParty"),
                     story.Value<string>("_ref"));
                 }
  
-                var header = string.Format("{0} has {1} stories assigned. \n", config["humanName"], count);
-                Echo.Out(header + sb.ToString(), 1);
+                Echo.Out(sb.ToString(), 1);
             }
         }
 
@@ -375,7 +392,10 @@ link:           {5}
 
                 if(!task.weeklyTime.ContainsKey(week_begin_date.Date)) {
                     /* this can and will create an invisible time item for tasks that don't belong to this week. no damage will be done */
-                    task.weeklyTime.Add(week_begin_date.Date, ApiWrapper.CreateNewTimeEntryItem(config["projectId"], my_id, task.taskObjectId, week_begin_date));
+                    task.weeklyTime.Add(
+						week_begin_date.Date, 
+						ApiWrapper.CreateNewTimeEntryItem(config["projectId"], my_id, task.taskObjectId, week_begin_date)
+					);
                 }
             }
         }

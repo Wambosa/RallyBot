@@ -1,5 +1,4 @@
-﻿
-namespace Tai.Extensions {
+﻿namespace Tai.Extensions {
 
     public static class CustomExtensions {
 
@@ -96,5 +95,9 @@ namespace Tai.Extensions {
 
             return prettyDate;
         }
+
+		public static string GetRallyDateString(this System.DateTime someDate){
+			return someDate.ToString("yyyy-MM-ddTHH:mm:ss.000Z");
+		}
     }
 }
