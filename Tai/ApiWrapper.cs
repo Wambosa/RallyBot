@@ -179,6 +179,14 @@ namespace Tai {
             return storys;
         }
 
+		public static int GetStorySize(string formattedId) {
+            var query = string.Format("HierarchicalRequirement?query=(FormattedID = {0})&fetch=true", formattedId);
+            var jsonQuery = GetJsonObject(BASE_URL + query);
+            var jsonQueryResults = jsonQuery["QueryResult"]["Results"];
+
+            return jsonQueryResults[0].Value<int>("PlanEstimate");
+		}
+
         public static List<JToken> GetTasks(List<JToken> storys) {
 
             List<JToken> tasks = new List<JToken>();

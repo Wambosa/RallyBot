@@ -79,6 +79,7 @@ namespace Tai {
 			{"description=", "", desc => {config["description"] = desc;}},
 			{"note=|notes=", "", note => {config["notes"] = note;}},
 			{"block=|blocked=", "", isblock => {config["isBlocked"] = isblock;}},
+			{"story-size=", "", size => {config["storySize"] = size;}},
 			{"estimate-hours=", "", hours => {config["estimateHours"] = hours;}},
 			{"task-state=", "", state => {config["taskState"] = state;}}, /* "Defined", "In-Progress", "Completed" */
 			{"task-name=", "", name => {config["taskName"] = name;}},

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Tai.Data;
 using Tai.Extensions;
 using Tai.UtilityBelt;
 using Newtonsoft.Json.Linq;
@@ -150,17 +151,23 @@ namespace Tai {
 
         internal static void CreateMyStoryTasks(TaiConfig config) {
             
-            config = SetRequiredProperties(config, "targetUser", "storyId", "estimateHours", "taskState");
+            config = SetRequiredProperties(config, "targetUser", "storyId", "storySize", "estimateHours", "taskState");
 
 			JToken story = ApiWrapper.GetUserStory(config["storyId"]);
 
-			foreach(string logicalName in GetLogicalTaskNamesForStory(story.Value<string>("Description"))) {
+			string[] taskNames = GetLogicalTaskNamesForStory(story.Value<string>("Description"));
+
+			var splitEstimate =  Math.Floor(Convert.ToDecimal(Convert.ToInt32(config["estimateHours"]) / taskNames.Length));
+
+			var targetUserObjectId = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+
+			foreach(string logicalName in taskNames) {
 				JObject newTask = new JObject();
 				newTask["Name"] = logicalName;
 				newTask["Description"] = config["description"] ?? "";
 				newTask["Notes"] = config["notes"] ?? "";
-				newTask["Owner"] = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
-				newTask["Estimate"] = config["estimateHours"];
+				newTask["Owner"] = targetUserObjectId;
+				newTask["Estimate"] = splitEstimate;
 				newTask["State"] = config["taskState"];
 				newTask["TaskIndex"] = 1;
 				newTask["WorkProduct"] = story.Value<string>("ObjectID");
@@ -187,13 +194,15 @@ namespace Tai {
 				"QA Test Case Execution",
 			};
 
-			foreach(JToken story in storys) {				
+			var targetUserObjectId = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+
+			foreach(JToken story in storys) {
 				foreach(string logicalName in qaTaskNames) {
 					JObject newTask = new JObject();
 					newTask["Name"] = logicalName;
 					newTask["Description"] = config["description"] ?? "";
 					newTask["Notes"] = config["notes"] ?? "";
-					newTask["Owner"] = ApiWrapper.GetTargetUserObjectId(config["targetUser"]);
+					newTask["Owner"] = targetUserObjectId;
 					newTask["Estimate"] = 1; //hardcode 1 on purpose
 					newTask["State"] = config["taskState"];
 					newTask["TaskIndex"] = 1;
@@ -217,7 +226,7 @@ namespace Tai {
 			List<JToken> storys = ApiWrapper.GetUserStories(config["projectId"], iterations);
 
 			string[] devTaskNames = new string[] {
-				 (new Random().Next(0, 2) == 0 ? "Code Review" : "Harsh Code Review"),
+				 (new Random(RandomSeed.seed).Next(0, 2) == 0 ? "Code Review" : "Harsh Code Review"),
 			};
 
 			foreach(JToken story in storys) {				
@@ -333,15 +342,16 @@ __________________________________________________________________________
 
         #region Private Helpers
         private static TaiConfig SetRequiredProperties(TaiConfig conf, params string[] requiredProperties) {
-            /* only some properties can be safely defaulted. this section belongs to those properties can be safely assumed*/
 
+			//BEWARE: default properties are processed in the order they are given and may have dependecies on another property!
             var defaults = new Dictionary<string, Func<string, string>> () {
-                {"targetUser",			val => { return val ?? conf["username"];}},
-                {"storyId",				val => { return val ?? "US00000";}}, //todo: get most recent story by latest task update/modified
-                {"taskName",			val => { return val ?? "new task";}},
-                {"estimateHours",		val => { return val ?? "10";}},
-                {"taskState",			val => { return val ?? "Defined";}},
-                {"projectId",			val  => {return val ?? ApiWrapper.GetProjectId(conf["targetUser"]);}},
+                {"targetUser",			val => {return val ?? conf["username"];}},
+                {"storyId",				val => {return val ?? "US00000";}}, //todo: get most recent story by latest task update/modified
+                {"taskName",			val => {return val ?? "new task";}},
+                {"storySize",			val => {return val ?? StorySize.digitToLetter[ApiWrapper.GetStorySize(conf["storyId"])];}},
+				{"estimateHours",		val => {return val ?? StorySize.preferredEstimates[conf["storySize"]].ToString();}},
+                {"taskState",			val => {return val ?? "Defined";}},
+                {"projectId",			val => {return val ?? ApiWrapper.GetProjectId(conf["targetUser"]);}},
                 {"iterationNumber",		val => {return val ?? ApiWrapper.GetIterationNumber(conf["projectId"]);}},
                 {"burndownDate",		val => {return val ?? DateTime.Today.ToString("yyyy-MM-dd");}},
                 {"hoursPerDay",			val => {return val ?? "8";}},
@@ -361,10 +371,9 @@ __________________________________________________________________________
                         statusReportNames.Add(member.Value<string>("DisplayName"));}
 
                     return statusReportNames.ToArray().ToJson();
-                }}            
-
+                }}
             };
-        
+
             foreach(string property in requiredProperties) {
                 conf[property] = defaults[property](conf[property]);}
 
@@ -376,9 +385,9 @@ __________________________________________________________________________
 			string mainText = Regex.Match(justification, @"(?<=I\swant\s)((.*)(?=so\b)|(?=even\b))").Value;
 
 			return new string[] {
-				string.Format("figure out how {0}", mainText),
-				string.Format("build {0}", mainText),
-				string.Format("test {0}", mainText),
+				string.Format("{0} {1}", Strings.RandomAnalysisTerm, mainText),
+				string.Format("{0} {1}", Strings.RandomBuildTerm, mainText),
+				string.Format("{0} {1}", Strings.RandomTestTerm, mainText),
 			};
 		}
 
@@ -634,6 +643,7 @@ __________________________________________________________________________
 
             return emailBody;
         }
+
         #endregion Private Helpers
     }
 }

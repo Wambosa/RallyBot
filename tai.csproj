@@ -64,6 +64,9 @@
   <ItemGroup>
     <Compile Include="Mono\Options.cs" />
     <Compile Include="Tai\CLIMethod.cs" />
+    <Compile Include="Tai\Data\RandomSeed.cs" />
+    <Compile Include="Tai\Data\StorySize.cs" />
+    <Compile Include="Tai\Data\Strings.cs" />
     <Compile Include="Tai\Extensions.cs" />
     <Compile Include="Tai\CachedAuthentication.cs" />
     <Compile Include="Tai\Data\Task.cs" />
